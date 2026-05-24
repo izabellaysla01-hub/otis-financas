@@ -47,7 +47,7 @@ export default function App() {
   const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || '');
   const [novaSenha, setNovaSenha] = useState('');
 
-  // NOVO: Lista de Ganhos por Fontes Separadas (Salário, Pix, etc)
+  // Lista de Ganhos por Fontes Separadas
   const [listaGanhos, setListaGanhos] = useState(() => {
     const salvos = localStorage.getItem('otis_lista_ganhos');
     return salvos ? JSON.parse(salvos) : [];
@@ -309,7 +309,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* NOVO DASHBOARD: SOMA TOTAL CONSOLIDADA E FORMATADA EM CAPS */}
                 <div className="mini-card-ganho">
                   <div className="dash-bar-info">
                     <span className="section-title-caps">GANHOS DO MÊS</span>
@@ -424,7 +423,6 @@ export default function App() {
                   <button className="btn-arrow-cal" onClick={() => navegarMes(1)}>›</button>
                 </div>
 
-                {/* VISÃO: QUATRO SUB-ABAS COM A NOVA DE GANHOS INTEGRADAS */}
                 <div className="sub-nav-vision">
                   <button className={subAbaVision === 'ganhos' ? 'active' : ''} onClick={() => setSubAbaVision('ganhos')}>💰 Ganhos</button>
                   <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parcelas</button>
@@ -432,7 +430,6 @@ export default function App() {
                   <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Cat.</button>
                 </div>
 
-                {/* NOVA ABA: SEPARAÇÃO DOS GANHOS POR FONTE DINÂMICA */}
                 {subAbaVision === 'ganhos' && (
                   <div className="section">
                     <div className="form-item-row-box">
@@ -485,7 +482,7 @@ export default function App() {
 
                     <div className="vision-list">
                       {categorias.map(cat => {
-                        const totalCat = totalCat = totaisPorCategoria[cat.nome] || 0;;
+                        const totalCat = totaisPorCategoria[cat.nome] || 0;
                         const perc = totalVariaveis > 0 ? (totalCat / totalVariaveis) * 100 : 0;
                         return (
                           <div key={cat.nome} className="vision-item">
