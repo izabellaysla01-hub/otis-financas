@@ -77,7 +77,7 @@ export default function App() {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
-  // 1. CARREGA DADOS DO FIRESTORE OU PUXA DO LOCALSTORAGE DISPOSITIVO
+  // 1. CARREGA DADOS DO FIRESTORE OU DO LOCALSTORAGE DO APARELHO
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -91,7 +91,7 @@ export default function App() {
           
           if (docSnap.exists()) {
             const d = docSnap.data();
-            setNome(d.nome || 'Usuário');
+            setNome(d.nome || '');
             setGanhosMensais(d.ganhosMensais || {});
             setListaGanhos(d.listaGanhos || []);
             setDespesasFixas(d.despesasFixas || []);
@@ -100,11 +100,11 @@ export default function App() {
             setParcelamentos(d.parcelamentos || []);
             setDespesasVariaveis(d.despesasVariaveis || []);
           } else {
-            setNome(localStorage.getItem('otis_nome') || 'Usuário');
+            setNome(localStorage.getItem('otis_nome') || '');
             const gm = localStorage.getItem('otis_ganhos_meses');
             if (gm) setGanhosMensais(JSON.parse(gm));
             const lg = localStorage.getItem('otis_lista_ganhos');
-            if (lg) setListaGActive = JSON.parse(lg);
+            if (lg) setListaGanhos(JSON.parse(lg)); // <- Corrigido aqui!
             const df = localStorage.getItem('otis_fixas');
             if (df) setDespesasFixas(JSON.parse(df));
             const hf = localStorage.getItem('otis_fixas_pagas_meses');
@@ -125,7 +125,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. SALVA NO FIRESTORE E MANTÉM BACKUP DE SEGURANÇA LOCAL
+  // 2. SALVA NO FIRESTORE E MANTÉM REPLICADO LOCALMENTE
   const atualizarBancoNuvem = async (dadosNovos) => {
     if (!auth.currentUser) return;
     try {
@@ -135,6 +135,10 @@ export default function App() {
 
   useEffect(() => {
     if (uid) {
+      setDoc(doc(db, "usuarios", uid), {
+        nome, ganhosMensais, listaGanhos, despesasFixas, historicoPagosFixas, assinaturas, parcelamentos, despesasVariaveis
+      }, { merge: true }).catch(e => console.error("Firestore recusou salvar:", e.message));
+
       localStorage.setItem('otis_nome', nome);
       localStorage.setItem('otis_ganhos_meses', JSON.stringify(ganhosMensais));
       localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGanhos));
@@ -144,7 +148,7 @@ export default function App() {
       localStorage.setItem('otis_assinaturas', JSON.stringify(assinaturas));
       localStorage.setItem('otis_parcelamentos', JSON.stringify(parcelamentos));
     }
-  }, [nome, ganhosMensais, listaGanhos, despesasFixas, historicoPagosFixas, assinaturas, parcelamentos, despesasVariaveis, uid]);
+  }, [nome, ganhosMensais, listaGanhos, despesasFixas, historicoPagosFixas, despesasVariaveis, assinaturas, parcelamentos, uid]);
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
@@ -584,7 +588,7 @@ export default function App() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span className="val">R$ {p.valor.toFixed(2)}</span>
-                          <button onClick={() => { setEditandoParcelaId(p.id); setFormParcela({ nome: p.nome, valor: p.valor.toString(), atual: p.parcelaAtual.toString(), total: p.parcelaTotal.toString() }); }} style={{ background: 'none', border: 'none' }}>✏️</button>
+                          <button onClick={() => { setEditandoParcelaId(p.id); setFormParcela({ nome: p.nome, valor: f.valor ? f.valor.toString() : p.valor.toString(), atual: p.parcelaAtual.toString(), total: p.parcelaTotal.toString() }); }} style={{ background: 'none', border: 'none' }}>✏️</button>
                           <button onClick={() => {
                             const filt = parcelamentos.filter(i => i.id !== p.id);
                             setParcelamentos(filt);
