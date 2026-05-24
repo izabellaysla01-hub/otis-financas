@@ -28,99 +28,85 @@ body {
 .main-scroll { flex: 1; overflow-y: auto; padding-bottom: 120px; width: 100%; }
 .page { padding: 24px 20px; display: flex; flex-direction: column; gap: 24px; }
 
-/* DESIGN UNIFICADO DOS FORMULÁRIOS */
-.form-item-row-box {
-  background-color: #0d0d11;
-  border: 1px solid #1c1c24;
-  padding: 20px;
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* FIX DEFINITIVO LOGIN (PRETO E GRANDE) */
+.flex-cadastro { 
+  display: flex; 
+  flex-direction: column; 
+  height: 100%; 
+  justify-content: center; 
+  padding: 30px 24px; 
+  background-color: #000000;
+  gap: 24px;
 }
-.text-center { text-align: center; }
+.logo-area { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.logo-detalhe { width: 14px; height: 28px; background-color: #ff6600; border-radius: 4px; transform: skewX(-15deg); }
+.logo-texto { font-size: 34px; font-weight: 900; color: #ffffff; letter-spacing: -1px; }
+.ponto-laranha { color: #ff6600; }
+.titulo-principal { font-size: 26px; font-weight: 700; text-align: center; color: #ffffff; line-height: 1.3; margin-bottom: 20px; }
+.grupo-botoes { display: flex; flex-direction: column; gap: 14px; width: 100%; }
+.subtitulo { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.descricao { font-size: 14px; color: #666680; margin-bottom: 16px; }
 
+/* BOTOES LOGIN */
+.btn-laranja { background-color: #ff6600; color: #ffffff; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%; }
+.btn-escuro { background-color: #0d0d11; color: #ffffff; border: 1px solid #1c1c24; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.btn-voltar { background: none; border: none; color: #ff6600; font-size: 14px; font-weight: bold; cursor: pointer; align-self: flex-start; }
+
+/* INPUTS UNIFICADOS ESCUROS */
 .input-custom-dark {
-  background-color: #000000 !important;
+  background-color: #0d0d11 !important;
   border: 1px solid #1c1c24 !important;
   color: #ffffff !important;
-  padding: 14px;
-  border-radius: 12px;
+  padding: 16px;
+  border-radius: 14px;
   width: 100%;
   outline: none;
-  font-size: 14px;
-}
-.input-custom-dark::placeholder { color: #444455; }
-
-.btn-laranja-fluid {
-  background-color: #ff6600;
-  color: #ffffff;
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
   font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  width: 100%;
+  margin-bottom: 12px;
 }
+.input-custom-dark:focus { border-color: #ff6600 !important; }
 
-/* DASHBOARD EM BARRAS DE PROGRESSO */
-.dashboard-bars-container {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  background-color: #0d0d11;
-  border: 1px solid #1c1c24;
-  padding: 20px;
-  border-radius: 20px;
-  position: relative;
-}
-.dash-bar-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: relative;
-}
+/* DASHBOARD COM CARD LARANJA GRANDE */
+.card-sobrelante { background: linear-gradient(135deg, #ff6600 0%, #e63900 100%); padding: 28px 24px; border-radius: 24px; color: #ffffff; box-shadow: 0 12px 24px rgba(255, 102, 0, 0.15); }
+.card-sobrelante .label { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; opacity: 0.85; }
+.valor-main { font-size: 38px; font-weight: 900; margin: 8px 0; letter-spacing: -0.5px; }
+
+/* CARD EXCLUSIVO DE GANHO */
+.mini-card-ganho { background-color: #0d0d11; border: 1px solid #1c1c24; padding: 16px 20px; border-radius: 18px; position: relative; cursor: pointer; }
 .dash-bar-info { display: flex; justify-content: space-between; align-items: center; }
 .dash-bar-label { font-size: 13px; color: #666680; font-weight: 600; }
 .dash-bar-value { font-size: 18px; font-weight: 800; }
-.dash-bar-bg { background-color: #000000; height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid #1c1c24; }
-.dash-bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease-in-out; }
-.fill-verde { background: #33ff99; }
-.fill-laranja { background: linear-gradient(90deg, #ff6600, #ff8833); }
-.edit-input-dash { position: absolute; top: 0; right: 0; width: 100px; background: #000; border: 1px solid #ff6600; color: #fff; padding: 4px; border-radius: 6px; font-size: 13px; }
+.text-verde { color: #33ff99; }
+.text-laranja { color: #ff8833; }
+.dash-bar-bg { background-color: #000000; height: 10px; border-radius: 5px; overflow: hidden; }
+.dash-bar-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
+.edit-input-dash { position: absolute; top: 0; right: 0; width: 110px; background: #000; border: 1px solid #ff6600; color: #fff; padding: 6px; border-radius: 8px; font-size: 13px; }
 
-/* COMPROMETIDO DETALHADO POR CONTA CONCURSADA */
-.comprometido-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px; }
+/* CONTAINER DO DROP COMPROMETIDO */
+.section-comprometido-drop { background-color: #0d0d11; border: 1px solid #1c1c24; border-radius: 18px; padding: 16px; }
+.comprometido-header { display: flex; justify-content: space-between; align-items: center; }
 .comprometido-total-num { font-size: 16px; font-weight: 800; color: #ff8833; }
-.comprometido-individual-list { display: flex; flex-direction: column; gap: 8px; }
-.comp-indiv-card {
-  background-color: #0d0d11;
-  border: 1px solid #1c1c24;
-  padding: 14px 16px;
-  border-radius: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.comp-indiv-card span { font-size: 14px; color: #ffffff; font-weight: 500; }
-.comp-indiv-card strong { font-size: 14px; font-weight: 700; color: #ff8833; }
+.comprometido-individual-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; border-top: 1px solid #1c1c24; padding-top: 12px; }
+.comp-indiv-card { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+.comp-indiv-card span { font-size: 13px; color: #aaa; }
+.comp-indiv-card strong { font-size: 13px; color: #ffffff; }
 
-/* REGRAS BASE DO APP */
-.top-header { display: flex; justify-content: space-between; align-items: center; }
-.user-greet { font-size: 18px; font-weight: 700; color: #ffffff; }
-.btn-logout { background: #16161a; border: 1px solid #2a2a32; color: #ff4d4d; padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+/* REGRAS DE LAYOUT GERAIS */
 .section { display: flex; flex-direction: column; gap: 12px; }
 .section-title { font-size: 14px; font-weight: 700; color: #666680; text-transform: uppercase; letter-spacing: 1px; }
-
 .item-row { background-color: #0d0d11; border: 1px solid #1c1c24; padding: 16px; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; }
 .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 14px; flex-shrink: 0; }
 .info { flex: 1; }
 .name { font-size: 15px; font-weight: 600; color: #ffffff; }
 .date { font-size: 12px; color: #666680; margin-top: 4px; }
 .val { font-size: 15px; font-weight: 700; color: #ffffff; }
+.btn-action-del-chat { background: none; border: none; color: #ff4d4d; font-size: 16px; cursor: pointer; }
 
-/* MENU FLUTUANTE PREMIUM COM PERFIL */
+/* FORM BOXES */
+.form-item-row-box { background-color: #0d0d11; border: 1px solid #1c1c24; padding: 20px; border-radius: 20px; display: flex; flex-direction: column; gap: 12px; }
+.btn-laranja-fluid { background-color: #ff6600; color: #ffffff; border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; }
+
+/* MENU FLUTUANTE */
 .nav-floating {
   position: fixed; bottom: 24px; left: 6%; right: 6%; height: 68px; 
   background-color: rgba(13, 13, 17, 0.9); border: 1px solid #1c1c24; border-radius: 35px; 
@@ -130,7 +116,7 @@ body {
 .nav-floating button { background: none; border: none; color: #3e3e4f; font-size: 22px; cursor: pointer; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .nav-floating button.active { color: #ff6600; font-size: 24px; }
 
-/* ABA VISION */
+/* OUTROS ELEMENTOS VISÃO */
 .sub-nav-vision { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .sub-nav-vision button { background: #0d0d11; border: 1px solid #1c1c24; color: #666680; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .sub-nav-vision button.active { background: rgba(255, 102, 0, 0.15); border-color: #ff6600; color: #ff6600; }
@@ -153,8 +139,6 @@ body {
 .chat-input-area { padding: 16px 0; display: flex; gap: 10px; background: #000; }
 .chat-input-area input { flex: 1; background: #0d0d11; border: 1px solid #1c1c24; padding: 16px; border-radius: 16px; color: #fff; outline: none; }
 .chat-input-area button { background: #ff6600; border: none; color: #fff; width: 54px; border-radius: 16px; font-size: 18px; cursor: pointer; }
-
-.flex-cadastro { display: flex; flex-direction: column; height: 100%; justify-content: center; padding: 24px; gap: 20px; }
 .form-box-inline { display: flex; gap: 10px; }
 .form-box-inline input { flex: 1; background: #0d0d11; border: 1px solid #1c1c24; padding: 12px 16px; border-radius: 24px; color: #fff; outline: none; }
 .form-box-inline button { background: #ff6600; border: none; color: #fff; padding: 0 20px; border-radius: 24px; font-weight: bold; cursor: pointer; }
