@@ -1,3 +1,14 @@
+/* Isso garante respiro para o iPhone/Android em modo app */
+:root {
+  --safe-area-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-floating {
+  /* Adicionamos a variável de segurança aqui */
+  padding-bottom: var(--safe-area-bottom);
+  height: calc(75px + var(--safe-area-bottom));
+  /* ... resto do seu código ... */
+}
 * { 
   box-sizing: border-box; 
   margin: 0; 
