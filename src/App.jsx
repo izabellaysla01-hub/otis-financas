@@ -77,7 +77,7 @@ export default function App() {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
-  // 1. CONEXÃO SEGURO COPIANDO E SINCRONIZANDO DA NUVEM
+  // 1. CARREGA DADOS DO FIRESTORE OU PUXA DO LOCALSTORAGE DISPOSITIVO
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -85,37 +85,38 @@ export default function App() {
         setUid(user.uid);
         setUserEmail(user.email);
         
-        const docRef = doc(db, "usuarios", user.uid);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const d = docSnap.data();
-          setNome(d.nome || '');
-          setGanhosMensais(d.ganhosMensais || {});
-          setListaGanhos(d.listaGanhos || []);
-          setDespesasFixas(d.despesasFixas || []);
-          setHistoricoPagosFixas(d.historicoPagosFixas || {});
-          setAssinaturas(d.assinaturas || []);
-          setParcelamentos(d.parcelamentos || []);
-          setDespesasVariaveis(d.despesasVariaveis || []);
-        } else {
-          // Se a nuvem estiver zerada para esse e-mail, resgata a memória do aparelho
-          setNome(localStorage.getItem('otis_nome') || '');
-          const gm = localStorage.getItem('otis_ganhos_meses');
-          if (gm) setGanhosMensais(JSON.parse(gm));
-          const lg = localStorage.getItem('otis_lista_ganhos');
-          if (lg) setListaGanhos(JSON.parse(lg));
-          const df = localStorage.getItem('otis_fixas');
-          if (df) setDespesasFixas(JSON.parse(df));
-          const hf = localStorage.getItem('otis_fixas_pagas_meses');
-          if (hf) setHistoricoPagosFixas(JSON.parse(hf));
-          const dv = localStorage.getItem('otis_variaveis');
-          if (dv) setDespesasVariaveis(JSON.parse(dv));
-          const as = localStorage.getItem('otis_assinaturas');
-          if (as) setAssinaturas(JSON.parse(as));
-          const pa = localStorage.getItem('otis_parcelamentos');
-          if (pa) setParcelamentos(JSON.parse(pa));
-        }
+        try {
+          const docRef = doc(db, "usuarios", user.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const d = docSnap.data();
+            setNome(d.nome || 'Usuário');
+            setGanhosMensais(d.ganhosMensais || {});
+            setListaGanhos(d.listaGanhos || []);
+            setDespesasFixas(d.despesasFixas || []);
+            setHistoricoPagosFixas(d.historicoPagosFixas || {});
+            setAssinaturas(d.assinaturas || []);
+            setParcelamentos(d.parcelamentos || []);
+            setDespesasVariaveis(d.despesasVariaveis || []);
+          } else {
+            setNome(localStorage.getItem('otis_nome') || 'Usuário');
+            const gm = localStorage.getItem('otis_ganhos_meses');
+            if (gm) setGanhosMensais(JSON.parse(gm));
+            const lg = localStorage.getItem('otis_lista_ganhos');
+            if (lg) setListaGActive = JSON.parse(lg);
+            const df = localStorage.getItem('otis_fixas');
+            if (df) setDespesasFixas(JSON.parse(df));
+            const hf = localStorage.getItem('otis_fixas_pagas_meses');
+            if (hf) setHistoricoPagosFixas(JSON.parse(hf));
+            const dv = localStorage.getItem('otis_variaveis');
+            if (dv) setDespesasVariaveis(JSON.parse(dv));
+            const as = localStorage.getItem('otis_assinaturas');
+            if (as) setAssinaturas(JSON.parse(as));
+            const pa = localStorage.getItem('otis_parcelamentos');
+            if (pa) setParcelamentos(JSON.parse(pa));
+          }
+        } catch (err) { console.error("Erro na leitura inicial:", err); }
       } else {
         setUsuarioLogado(false);
         setUid(null);
@@ -124,13 +125,26 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. FUNÇÃO QUE ENVIA DE VERDADE PARA O BANCO COM PERMISSÃO UID AUTO
+  // 2. SALVA NO FIRESTORE E MANTÉM BACKUP DE SEGURANÇA LOCAL
   const atualizarBancoNuvem = async (dadosNovos) => {
     if (!auth.currentUser) return;
     try {
       await setDoc(doc(db, "usuarios", auth.currentUser.uid), dadosNovos, { merge: true });
-    } catch (e) { console.error("Erro na trava de segurança:", e.message); }
+    } catch (e) { console.error("Erro ao sincronizar nuvem:", e.message); }
   };
+
+  useEffect(() => {
+    if (uid) {
+      localStorage.setItem('otis_nome', nome);
+      localStorage.setItem('otis_ganhos_meses', JSON.stringify(ganhosMensais));
+      localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGanhos));
+      localStorage.setItem('otis_fixas', JSON.stringify(despesasFixas));
+      localStorage.setItem('otis_fixas_pagas_meses', JSON.stringify(historicoPagosFixas));
+      localStorage.setItem('otis_variaveis', JSON.stringify(despesasVariaveis));
+      localStorage.setItem('otis_assinaturas', JSON.stringify(assinaturas));
+      localStorage.setItem('otis_parcelamentos', JSON.stringify(parcelamentos));
+    }
+  }, [nome, ganhosMensais, listaGanhos, despesasFixas, historicoPagosFixas, assinaturas, parcelamentos, despesasVariaveis, uid]);
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
