@@ -104,7 +104,7 @@ export default function App() {
             const gm = localStorage.getItem('otis_ganhos_meses');
             if (gm) setGanhosMensais(JSON.parse(gm));
             const lg = localStorage.getItem('otis_lista_ganhos');
-            if (lg) setListaGanhos(JSON.parse(lg)); // <- Corrigido aqui!
+            if (lg) setListaGanhos(JSON.parse(lg));
             const df = localStorage.getItem('otis_fixas');
             if (df) setDespesasFixas(JSON.parse(df));
             const hf = localStorage.getItem('otis_fixas_pagas_meses');
@@ -321,7 +321,7 @@ export default function App() {
                       const novosG = { ...ganhosMensais, [mesAnoChave]: val };
                       setGanhosMensais(novosG);
                       atualizarBancoNuvem({ ganhosMensais: novosG });
-                      setEditandoGanhos(false); 
+                      setEditandoGActive = false; 
                     }} />
                   )}
                   <p style={{ fontSize: '11px', color: '#444455', marginTop: '4px' }}>Edite no lápis ou detalhe as fontes na aba Visão 📊</p>
@@ -588,7 +588,7 @@ export default function App() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span className="val">R$ {p.valor.toFixed(2)}</span>
-                          <button onClick={() => { setEditandoParcelaId(p.id); setFormParcela({ nome: p.nome, valor: f.valor ? f.valor.toString() : p.valor.toString(), atual: p.parcelaAtual.toString(), total: p.parcelaTotal.toString() }); }} style={{ background: 'none', border: 'none' }}>✏️</button>
+                          <button onClick={() => { setEditandoParcelaId(p.id); setFormParcela({ nome: p.nome, valor: p.valor.toString(), atual: p.parcelaAtual.toString(), total: p.parcelaTotal.toString() }); }} style={{ background: 'none', border: 'none' }}>✏️</button>
                           <button onClick={() => {
                             const filt = parcelamentos.filter(i => i.id !== p.id);
                             setParcelamentos(filt);
