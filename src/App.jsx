@@ -31,14 +31,27 @@ export default function App() {
   const [carregando, setCarregando] = useState(false);
   const [comprometidoAberto, setComprometidoAberto] = useState(false);
 
+  // SISTEMA DE DATA DINÂMICA (Controla a virada de mês de forma automática)
+  const [dataFiltro, setDataFiltro] = useState(new Date()); // Começa no mês atual (Maio 2026)
+  
+  const obterMesAnoTexto = (date) => {
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return `${meses[date.getMonth()]} ${date.getFullYear()}`;
+  };
+  
+  const mesAnoChave = `${dataFiltro.getMonth() + 1}-${dataFiltro.getFullYear()}`;
+
   // Perfil e Login
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || '');
   const [novaSenha, setNovaSenha] = useState('');
 
-  // Financeiro ZERADO para venda
-  const [ganhos, setGanhos] = useState(() => parseFloat(localStorage.getItem('otis_ganhos')) || 0);
+  // Financeiro amarrado ao mês selecionado
+  const [ganhosMensais, setGanhosMensais] = useState(() => {
+    const salvos = localStorage.getItem('otis_ganhos_meses');
+    return salvos ? JSON.parse(salvos) : {};
+  });
   const [editandoGanhos, setEditandoGanhos] = useState(false);
 
   // Categorias
@@ -56,15 +69,21 @@ export default function App() {
   });
   const [novaCatNome, setNovaCatNome] = useState('');
 
-  // Listas
+  // Contas Fixas Globais
   const [despesasFixas, setDespesasFixas] = useState(() => {
     const salvas = localStorage.getItem('otis_fixas');
     return salvas ? JSON.parse(salvas) : [];
   });
-  // Campo vencimento adicionado no formulário!
   const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
 
+  // Controle de pagamentos de fixas por mês
+  const [historicoPagosFixas, setHistoricoPagosFixas] = useState(() => {
+    const salvos = localStorage.getItem('otis_fixas_pagas_meses');
+    return salvos ? JSON.parse(salvos) : {};
+  });
+
+  // Assinaturas e Parcelamentos Dinâmicos
   const [assinaturas, setAssinaturas] = useState(() => {
     const salvas = localStorage.getItem('otis_assinaturas');
     return salvas ? JSON.parse(salvas) : [];
@@ -79,13 +98,14 @@ export default function App() {
   const [formParcela, setFormParcela] = useState({ nome: '', valor: '', atual: '', total: '' });
   const [editandoParcelaId, setEditandoParcelaId] = useState(null);
 
+  // Gastos do Chat vinculados por Mês
   const [despesasVariaveis, setDespesasVariaveis] = useState(() => {
     const salvas = localStorage.getItem('otis_variaveis');
     return salvas ? JSON.parse(salvas) : [];
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários (ex: "farmácia 20") e eu organizo tudo!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nOs gastos digitados aqui caem direto no mês selecionado!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -105,30 +125,53 @@ export default function App() {
   }, [nome]);
 
   useEffect(() => { 
-    localStorage.setItem('otis_ganhos', ganhos);
+    localStorage.setItem('otis_ganhos_meses', JSON.stringify(ganhosMensais));
     localStorage.setItem('otis_nome', nome);
     localStorage.setItem('otis_fixas', JSON.stringify(despesasFixas));
+    localStorage.setItem('otis_fixas_pagas_meses', JSON.stringify(historicoPagosFixas));
     localStorage.setItem('otis_variaveis', JSON.stringify(despesasVariaveis));
     localStorage.setItem('otis_categorias', JSON.stringify(categorias));
     localStorage.setItem('otis_assinaturas', JSON.stringify(assinaturas));
     localStorage.setItem('otis_parcelamentos', JSON.stringify(parcelamentos));
-  }, [ganhos, nome, despesasFixas, despesasVariaveis, categorias, assinaturas, parcelamentos]);
+  }, [ganhosMensais, nome, despesasFixas, historicoPagosFixas, despesasVariaveis, categorias, assinaturas, parcelamentos]);
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
+  // Pegar os ganhos específicos do mês ativo ou iniciar em 0
+  const ganhosDoMesAtual = ganhosMensais[mesAnoChave] || 0;
+
+  // Filtrar os gastos variáveis que pertencem unicamente ao mês e ano ativo
+  const variaveisDoMes = despesasVariaveis.filter(d => d.mesAno === mesAnoChave);
+
   const totalFixas = despesasFixas.reduce((acc, curr) => acc + curr.valor, 0);
-  const totalVariaveis = despesasVariaveis.reduce((acc, curr) => acc + curr.valor, 0);
+  const totalVariaveis = variaveisDoMes.reduce((acc, curr) => acc + curr.valor, 0);
   const totalAssinaturas = assinaturas.reduce((acc, curr) => acc + curr.valor, 0);
+  
+  // Parcelamentos inteligentes: só contam se a parcela atual não estourou o total
   const totalParcelas = parcelamentos.reduce((acc, curr) => acc + curr.valor, 0);
   
   const comprometidoTotal = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas;
-  const valorSobrelante = ganhos - comprometidoTotal;
-  const percSobra = ganhos > 0 ? (valorSobrelante / ganhos) * 100 : 0;
+  const valorSobrelante = ganhosDoMesAtual - comprometidoTotal;
+  const percSobra = ganhosDoMesAtual > 0 ? (valorSobrelante / ganhosDoMesAtual) * 100 : 0;
 
   const totaisPorCategoria = categorias.reduce((acc, cat) => {
-    acc[cat.nome] = despesasVariaveis.filter(d => d.categoria === cat.nome).reduce((sum, d) => sum + d.valor, 0);
+    acc[cat.nome] = variaveisDoMes.filter(d => d.categoria === cat.nome).reduce((sum, d) => sum + d.valor, 0);
     return acc;
   }, {});
+
+  const navegarMes = (direcao) => {
+    const novaData = new Date(dataFiltro);
+    novaData.setMonth(novaData.getMonth() + direcao);
+    setDataFiltro(novaData);
+  };
+
+  const alternarPagoFixa = (id) => {
+    const chavePago = `${mesAnoChave}_${id}`;
+    setHistoricoPagosFixas({
+      ...historicoPagosFixas,
+      [chavePago]: !historicoPagosFixas[chavePago]
+    });
+  };
 
   const criarContaFirebase = async () => {
     if (!email || !senha) return alert('Preencha e-mail e senha!');
@@ -188,13 +231,20 @@ export default function App() {
         if (!descricaoLimpa) descricaoLimpa = cat;
         descricaoLimpa = descricaoLimpa.charAt(0).toUpperCase() + descricaoLimpa.slice(1);
 
-        const novoGasto = { id: Date.now(), descricao: descricaoLimpa, valor, categoria: cat, data: '24/05/2026' };
+        const novoGasto = { 
+          id: Date.now(), 
+          descricao: descricaoLimpa, 
+          valor, 
+          categoria: cat, 
+          mesAno: mesAnoChave, // Gasto amarrado na folha do mês atual!
+          data: new Date().toLocaleDateString('pt-BR')
+        };
         setDespesasVariaveis(prev => [...prev, novoGasto]);
         
         setMensagens(prev => [...prev, { 
           id: Date.now()+1, 
           remetente: 'app', 
-          texto: `Vou registrar isso para você agora!\nFeito, ${nome || 'Izabella'}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
+          texto: `Registrado no histórico de ${obterMesAnoTexto(dataFiltro)}!\nFeito, ${nome || 'Izabella'}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
         }]);
       }
     }, 400);
@@ -211,10 +261,7 @@ export default function App() {
             
             {step === 1 && (
               <div className="text-center-box">
-                <div className="logo-area">
-                  <div className="logo-detalhe"></div>
-                  <span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span>
-                </div>
+                <div className="logo-area"><div className="logo-detalhe"></div><span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span></div>
                 <h1 className="titulo-principal">Descubra para onde está indo seu dinheiro.</h1>
                 <div className="grupo-botoes">
                   <button onClick={() => setStep(2)} className="btn-laranja">Criar uma conta</button>
@@ -256,11 +303,17 @@ export default function App() {
               <div className="page">
                 <div className="top-header">
                   <span className="user-greet">Olá, {nome || 'Usuário'} 👋</span>
-                  <span style={{ fontSize: '20px' }}>🦊</span>
+                  
+                  {/* SELETOR DE MESES PROFISSIONAL IGUAL AO PRINT */}
+                  <div className="calendar-navigator">
+                    <button onClick={() => navegarMes(-1)}>‹</button>
+                    <span>{obterMesAnoTexto(dataFiltro)}</span>
+                    <button onClick={() => navegarMes(1)}>›</button>
+                  </div>
                 </div>
 
                 <div className="card-sobrelante">
-                  <span className="label">VALOR SOBRELANTE LIVRE</span>
+                  <span className="label">VALOR SOBRELANTE LIVRE ({obterMesAnoTexto(dataFiltro)})</span>
                   <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
                   <div className="dash-bar-bg" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginTop: '12px' }}>
                     <div className="dash-bar-fill" style={{ width: `${Math.max(0, Math.min(percSobra, 100))}%`, background: '#fff' }}></div>
@@ -269,17 +322,21 @@ export default function App() {
 
                 <div className="mini-card-ganho" onClick={() => setEditandoGanhos(true)}>
                   <div className="dash-bar-info">
-                    <span className="dash-bar-label">Ganhos do Mês ✏️</span>
-                    <span className="dash-bar-value text-verde">R$ {ganhos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="dash-bar-label">Ganhos de {obterMesAnoTexto(dataFiltro)} ✏️</span>
+                    <span className="dash-bar-value text-verde">R$ {ganhosDoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
                   {editandoGanhos && (
-                    <input type="number" className="edit-input-dash" defaultValue={ganhos} autoFocus onBlur={(e) => { setGanhos(parseFloat(e.target.value) || 0); setEditandoGanhos(false); }} />
+                    <input type="number" className="edit-input-dash" defaultValue={ganhosDoMesAtual} autoFocus onBlur={(e) => { 
+                      const val = parseFloat(e.target.value) || 0;
+                      setGanhosMensais({ ...ganhosMensais, [mesAnoChave]: val });
+                      setEditandoGanhos(false); 
+                    }} />
                   )}
                 </div>
 
                 <div className="section-comprometido-drop">
                   <div className="comprometido-header" onClick={() => setComprometidoAberto(!comprometidoAberto)} style={{ cursor: 'pointer' }}>
-                    <span className="section-title">Comprometido Detalhado {comprometidoAberto ? '▲' : '▼'}</span>
+                    <span className="section-title">Comprometido {obterMesAnoTexto(dataFiltro)} {comprometidoAberto ? '▲' : '▼'}</span>
                     <span className="comprometido-total-num">R$ {comprometidoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
                   
@@ -294,7 +351,7 @@ export default function App() {
                       {parcelamentos.map(p => (
                         <div key={p.id} className="comp-indiv-card"><span>💳 {p.nome} ({p.parcelaAtual}/{p.parcelaTotal})</span><strong>R$ {p.valor.toFixed(2)}</strong></div>
                       ))}
-                      {despesasVariaveis.map(g => (
+                      {variaveisDoMes.map(g => (
                         <div key={g.id} className="comp-indiv-card"><span>💬 {g.descricao} (Chat)</span><strong>R$ {g.valor.toFixed(2)}</strong></div>
                       ))}
                       {comprometidoTotal === 0 && <p style={{ color: '#444', fontSize: '12px', padding: '10px' }}>Nenhum valor lançado.</p>}
@@ -304,25 +361,28 @@ export default function App() {
 
                 <div className="section">
                   <h3 className="section-title">Status das Contas Fixas</h3>
-                  {despesasFixas.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhuma conta fixa salva.</p> : despesasFixas.map(f => (
-                    <div key={f.id} className="item-row">
-                      <div className="dot" style={{ background: f.pago ? '#33ff99' : '#ff4d4d' }}></div>
-                      <div className="info" onClick={() => setDespesasFixas(despesasFixas.map(i => i.id === f.id ? {...i, pago: !i.pago} : i))}>
-                        <p className="name">{f.descricao}</p>
-                        <p className="date">Vence dia {f.vencimento} • {f.pago ? 'Pago' : 'Pendente'}</p>
+                  {despesasFixas.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhuma conta fixa salva.</p> : despesasFixas.map(f => {
+                    const estaPago = !!historicoPagosFixas[`${mesAnoChave}_${f.id}`];
+                    return (
+                      <div key={f.id} className="item-row">
+                        <div className="dot" style={{ background: estaPago ? '#33ff99' : '#ff4d4d' }}></div>
+                        <div className="info" onClick={() => alternarPagoFixa(f.id)}>
+                          <p className="name">{f.descricao}</p>
+                          <p className="date">Vence dia {f.vencimento} • {estaPago ? '✅ Pago neste mês' : '⏳ Pendente'}</p>
+                        </div>
+                        <span className="val">R$ {f.valor.toFixed(2)}</span>
                       </div>
-                      <span className="val">R$ {f.valor.toFixed(2)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="section">
-                  <h3 className="section-title">Lançamentos do Chat (Apagar se Errar)</h3>
-                  {despesasVariaveis.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhum gasto lançado pelo chat.</p> : despesasVariaveis.map(g => (
+                  <h3 className="section-title">Gastos do Chat em {obterMesAnoTexto(dataFiltro)}</h3>
+                  {variaveisDoMes.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhum gasto neste mês.</p> : variaveisDoMes.map(g => (
                     <div key={g.id} className="item-row">
                       <div className="info">
                         <p className="name">{g.descricao}</p>
-                        <p className="date">Categoria: {g.categoria}</p>
+                        <p className="date">{g.categoria} • {g.data}</p>
                       </div>
                       <span className="val text-laranja" style={{ marginRight: '14px' }}>R$ {g.valor.toFixed(2)}</span>
                       <button className="btn-action-del-chat" onClick={() => setDespesasVariaveis(despesasVariaveis.filter(i => i.id !== g.id))}>✕</button>
@@ -339,15 +399,14 @@ export default function App() {
                 <div className="form-item-row-box">
                   <input type="text" placeholder="Nome da Conta" value={formFixa.descricao} onChange={e => setFormFixa({...formFixa, descricao: e.target.value})} className="input-custom-dark" />
                   <input type="number" placeholder="Valor (R$)" value={formFixa.valor} onChange={e => setFormFixa({...formFixa, valor: e.target.value})} className="input-custom-dark" />
-                  {/* CAMPO DE VENCIMENTO ADICIONADO VISUALMENTE */}
-                  <input type="number" placeholder="Dia do Vencimento (Ex: 15)" value={formFixa.vencimento} onChange={e => setFormFixa({...formFixa, vencimento: e.target.value})} className="input-custom-dark" />
+                  <input type="number" placeholder="Dia do Vencimento" value={formFixa.vencimento} onChange={e => setFormFixa({...formFixa, vencimento: e.target.value})} className="input-custom-dark" />
                   <button className="btn-laranja-fluid" onClick={() => {
-                    if(!formFixa.descricao || !formFixa.valor || !formFixa.vencimento) return alert('Preencha todos os campos!');
+                    if(!formFixa.descricao || !formFixa.valor || !formFixa.vencimento) return alert('Preencha tudo!');
                     if(editandoFixaId) {
                       setDespesasFixas(despesasFixas.map(f => f.id === editandoFixaId ? {...f, descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: parseInt(formFixa.vencimento)} : f));
                       setEditandoFixaId(null);
                     } else {
-                      setDespesasFixas([...despesasFixas, { id: Date.now(), descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: parseInt(formFixa.vencimento), pago: false }]);
+                      setDespesasFixas([...despesasFixas, { id: Date.now(), descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: parseInt(formFixa.vencimento) }]);
                     }
                     setFormFixa({descricao: '', valor: '', vencimento: ''});
                   }}>{editandoFixaId ? 'Salvar Alteração' : 'Adicionar Conta Fixa'}</button>
@@ -372,10 +431,18 @@ export default function App() {
 
             {abaAtiva === 'visao' && (
               <div className="page">
-                <div className="sub-nav-vision">
-                  <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parcelamentos</button>
-                  <button className={subAbaVision === 'assinaturas' ? 'active' : ''} onClick={() => setSubAbaVision('assinaturas')}>📺 Assinaturas</button>
-                  <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Categorias</button>
+                {/* SELETOR DE MESES REPLICADO TAMBÉM NA VISION */}
+                <div className="sub-nav-vision" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="calendar-navigator" style={{ margin: 0 }}>
+                    <button onClick={() => navegarMes(-1)}>‹</button>
+                    <span style={{ fontSize: '14px' }}>{obterMesAnoTexto(dataFiltro)}</span>
+                    <button onClick={() => navegarMes(1)}>›</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parc.</button>
+                    <button className={subAbaVision === 'assinaturas' ? 'active' : ''} onClick={() => setSubAbaVision('assinaturas')}>📺 Assin.</button>
+                    <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Cat.</button>
+                  </div>
                 </div>
 
                 {subAbaVision === 'categorias' && (
@@ -383,7 +450,7 @@ export default function App() {
                     <div className="vision-summary">
                       <div className="circle-progress">
                         <span className="total-num">R$ {totalVariaveis.toFixed(2)}</span>
-                        <span className="total-lab">Gasto Chat</span>
+                        <span className="total-lab">Gasto no Mês</span>
                       </div>
                     </div>
                     
@@ -461,7 +528,7 @@ export default function App() {
                         if(!formParcela.nome || !formParcela.valor) return;
                         if(editandoParcelaId) {
                           setParcelamentos(parcelamentos.map(p => p.id === editandoParcelaId ? {...p, nome: formParcela.nome, valor: parseFloat(formParcela.valor), parcelaAtual: parseInt(formParcela.atual), parcelaTotal: parseInt(formParcela.total)} : p));
-                          setEditandoParcelaId(null);
+                          setParcelamentos(null);
                         } else {
                           setParcelamentos([...parcelamentos, { id: Date.now(), nome: formParcela.nome, valor: parseFloat(formParcela.valor), parcelaAtual: parseInt(formParcela.atual) || 1, parcelaTotal: parseInt(formParcela.total) || 12 }]);
                         }
