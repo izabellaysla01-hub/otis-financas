@@ -29,7 +29,7 @@ export default function App() {
   const [abaAtiva, setAbaAtiva] = useState('inicio');
   const [subAbaVision, setSubAbaVision] = useState('categorias');
   const [carregando, setCarregando] = useState(false);
-  const [comprometidoAberto, setComprometidoAberto] = useState(false); // Menu suspenso
+  const [comprometidoAberto, setComprometidoAberto] = useState(false);
 
   // Perfil e Login
   const [email, setEmail] = useState('');
@@ -37,12 +37,11 @@ export default function App() {
   const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || '');
   const [novaSenha, setNovaSenha] = useState('');
 
-  // Financeiro (Zerado para Venda)
+  // Financeiro ZERADO para venda
   const [ganhos, setGanhos] = useState(() => parseFloat(localStorage.getItem('otis_ganhos')) || 0);
   const [editandoGanhos, setEditandoGanhos] = useState(false);
-  const [novoGanhoInput, setNovoGanhoInput] = useState(ganhos.toString());
 
-  // Categorias (Dinâmicas)
+  // Categorias
   const [categorias, setCategorias] = useState(() => {
     const salvas = localStorage.getItem('otis_categorias');
     return salvas ? JSON.parse(salvas) : [
@@ -57,11 +56,13 @@ export default function App() {
   });
   const [novaCatNome, setNovaCatNome] = useState('');
 
+  // Listas
   const [despesasFixas, setDespesasFixas] = useState(() => {
     const salvas = localStorage.getItem('otis_fixas');
     return salvas ? JSON.parse(salvas) : [];
   });
-  const [formFixa, setFormFixa] = useState({ descricao: '', valor: '' });
+  // Campo vencimento adicionado no formulário!
+  const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
 
   const [assinaturas, setAssinaturas] = useState(() => {
@@ -145,6 +146,19 @@ export default function App() {
     try { await signInWithEmailAndPassword(auth, email, senha); } catch (error) { alert(error.message); } finally { setCarregando(false); }
   };
 
+  const alterarSenhaReal = async (e) => {
+    e.preventDefault();
+    if(!novaSenha || novaSenha.length < 6) return alert('A senha precisa de no mínimo 6 dígitos.');
+    setCarregando(true);
+    try {
+      if(auth.currentUser) {
+        await updatePassword(auth.currentUser, novaSenha);
+        alert('Senha alterada com sucesso!');
+        setNovaSenha('');
+      }
+    } catch(error) { alert(error.message); } finally { setCarregando(false); }
+  };
+
   const enviarMensagemChat = (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
@@ -157,11 +171,8 @@ export default function App() {
       if (valorMatch) {
         const valor = parseFloat(valorMatch[0].replace(',', '.'));
         let cat = 'Outros';
-        
-        // Normaliza texto tirando acentos e deixando minúsculo
         const t = msg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
-        // Verifica primeiro as categorias padrões
         if (t.includes('saude') || t.includes('remedio') || t.includes('farmacia')) cat = 'Saúde';
         else if (t.includes('uber') || t.includes('onibus') || t.includes('gasolina') || t.includes('transporte')) cat = 'Transporte';
         else if (t.includes('mercado') || t.includes('comida') || t.includes('compras') || t.includes('feira')) cat = 'Mercado';
@@ -169,9 +180,8 @@ export default function App() {
         else if (t.includes('salao') || t.includes('unha') || t.includes('cabelo') || t.includes('beleza')) cat = 'Beleza';
         else if (t.includes('curso') || t.includes('livro') || t.includes('estudo') || t.includes('faculdade')) cat = 'Estudo';
         else {
-          // Inteligência para categorias criadas por você!
           const encontrada = categorias.find(c => t.includes(c.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
-          if (encontrada) cat = encontrada.name || encontrada.nome;
+          if (encontrada) cat = encontrada.nome;
         }
 
         let descricaoLimpa = msg.replace(/[R$]*\d+([.,]\d+)?/, '').replace(/(reais|real|reais com|gastei|com|gasto)/gi, '').trim();
@@ -249,7 +259,6 @@ export default function App() {
                   <span style={{ fontSize: '20px' }}>🦊</span>
                 </div>
 
-                {/* VALOR SOBRELANTE NO CARD LARANJA COMO ANTES */}
                 <div className="card-sobrelante">
                   <span className="label">VALOR SOBRELANTE LIVRE</span>
                   <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
@@ -258,7 +267,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* CARD EXCLUSIVO DE GANHOS DO MÊS */}
                 <div className="mini-card-ganho" onClick={() => setEditandoGanhos(true)}>
                   <div className="dash-bar-info">
                     <span className="dash-bar-label">Ganhos do Mês ✏️</span>
@@ -269,7 +277,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* MENU SUSPENSO DO COMPROMETIDO */}
                 <div className="section-comprometido-drop">
                   <div className="comprometido-header" onClick={() => setComprometidoAberto(!comprometidoAberto)} style={{ cursor: 'pointer' }}>
                     <span className="section-title">Comprometido Detalhado {comprometidoAberto ? '▲' : '▼'}</span>
@@ -277,7 +284,7 @@ export default function App() {
                   </div>
                   
                   {comprometidoAberto && (
-                    <div className="comprometido-individual-list animated-drop">
+                    <div className="comprometido-individual-list">
                       {despesasFixas.map(f => (
                         <div key={f.id} className="comp-indiv-card"><span>📋 {f.descricao} (Fixa)</span><strong>R$ {f.valor.toFixed(2)}</strong></div>
                       ))}
@@ -295,7 +302,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* STATUS DAS CONTAS FIXAS */}
                 <div className="section">
                   <h3 className="section-title">Status das Contas Fixas</h3>
                   {despesasFixas.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhuma conta fixa salva.</p> : despesasFixas.map(f => (
@@ -310,7 +316,6 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* HISTÓRICO RECENTE DO CHAT COM OPÇÃO DE APAGAR (✕) */}
                 <div className="section">
                   <h3 className="section-title">Lançamentos do Chat (Apagar se Errar)</h3>
                   {despesasVariaveis.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhum gasto lançado pelo chat.</p> : despesasVariaveis.map(g => (
@@ -334,15 +339,17 @@ export default function App() {
                 <div className="form-item-row-box">
                   <input type="text" placeholder="Nome da Conta" value={formFixa.descricao} onChange={e => setFormFixa({...formFixa, descricao: e.target.value})} className="input-custom-dark" />
                   <input type="number" placeholder="Valor (R$)" value={formFixa.valor} onChange={e => setFormFixa({...formFixa, valor: e.target.value})} className="input-custom-dark" />
+                  {/* CAMPO DE VENCIMENTO ADICIONADO VISUALMENTE */}
+                  <input type="number" placeholder="Dia do Vencimento (Ex: 15)" value={formFixa.vencimento} onChange={e => setFormFixa({...formFixa, vencimento: e.target.value})} className="input-custom-dark" />
                   <button className="btn-laranja-fluid" onClick={() => {
-                    if(!formFixa.descricao || !formFixa.valor) return;
+                    if(!formFixa.descricao || !formFixa.valor || !formFixa.vencimento) return alert('Preencha todos os campos!');
                     if(editandoFixaId) {
-                      setDespesasFixas(despesasFixas.map(f => f.id === editandoFixaId ? {...f, descricao: formFixa.descricao, valor: parseFloat(formFixa.valor)} : f));
+                      setDespesasFixas(despesasFixas.map(f => f.id === editandoFixaId ? {...f, descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: parseInt(formFixa.vencimento)} : f));
                       setEditandoFixaId(null);
                     } else {
-                      setDespesasFixas([...despesasFixas, { id: Date.now(), descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: 10, pago: false }]);
+                      setDespesasFixas([...despesasFixas, { id: Date.now(), descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: parseInt(formFixa.vencimento), pago: false }]);
                     }
-                    setFormFixa({descricao: '', valor: ''});
+                    setFormFixa({descricao: '', valor: '', vencimento: ''});
                   }}>{editandoFixaId ? 'Salvar Alteração' : 'Adicionar Conta Fixa'}</button>
                 </div>
                 
@@ -351,10 +358,10 @@ export default function App() {
                     <div key={f.id} className="item-row">
                       <div className="info">
                         <p className="name">{f.descricao}</p>
-                        <p className="date">R$ {f.valor.toFixed(2)}</p>
+                        <p className="date">R$ {f.valor.toFixed(2)} • Dia {f.vencimento}</p>
                       </div>
                       <div className="actions">
-                        <button onClick={() => { setEditandoFixaId(f.id); setFormFixa({descricao: f.descricao, valor: f.valor.toString()}); }} style={{ background: 'none', border: 'none', marginRight: '12px' }}>✏️</button>
+                        <button onClick={() => { setEditandoFixaId(f.id); setFormFixa({descricao: f.descricao, valor: f.valor.toString(), vencimento: f.vencimento.toString()}); }} style={{ background: 'none', border: 'none', marginRight: '12px' }}>✏️</button>
                         <button onClick={() => setDespesasFixas(despesasFixas.filter(i => i.id !== f.id))} style={{ background: 'none', border: 'none' }}>🗑️</button>
                       </div>
                     </div>
@@ -503,9 +510,9 @@ export default function App() {
             {abaAtiva === 'perfil' && (
               <div className="page">
                 <h2 className="section-title">Meu Perfil</h2>
-                <div className="form-item-row-box text-center">
+                <div className="form-item-row-box text-center-box">
                   <div style={{ fontSize: '48px', marginBottom: '8px' }}>🦊</div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>{nome || 'Usuário'}</h3>
+                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>{nome || 'Usuário'}</h3>
                   <p style={{ fontSize: '13px', color: '#666680', marginTop: '2px' }}>{userEmail}</p>
                 </div>
 
@@ -520,7 +527,7 @@ export default function App() {
                   <button type="submit" className="btn-laranja-fluid">Atualizar Senha</button>
                 </form>
 
-                <button className="btn-laranja-fluid" style={{ backgroundColor: '#ff4d4d' }} onClick={() => signOut(auth)}>
+                <button className="btn-laranja-fluid" style={{ backgroundColor: '#ff4d4d', marginTop: '10px' }} onClick={() => signOut(auth)}>
                   Fazer Logout / Sair da Conta 🚪
                 </button>
               </div>
