@@ -290,7 +290,6 @@ export default function App() {
                   <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
                 </div>
 
-                {/* NOVO SELETOR DE CALENDÁRIO GRANDE E ESPAÇADO NO CENTRO */}
                 <div className="calendar-box-center">
                   <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
                   <span className="text-date-cal">{obterMesAnoTexto(dataFiltro)}</span>
@@ -358,6 +357,7 @@ export default function App() {
                           <p className="name">{f.descricao}</p>
                           <p className="date">Vence dia {f.vencimento} • {estaPago ? 'Pago' : 'Pendente'}</p>
                         </div>
+                        {/* LINHA COERENTE E CORRIGIDA ABAIXO */}
                         <span className="val">R$ {f.valor.toFixed(2)}</span>
                       </div>
                     );
@@ -419,7 +419,6 @@ export default function App() {
 
             {abaAtiva === 'visao' && (
               <div className="page">
-                {/* SELETOR DE CALENDÁRIO ESPAÇADO TAMBÉM NA ABA VISÃO */}
                 <div className="calendar-box-center" style={{ marginBottom: '10px' }}>
                   <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
                   <span className="text-date-cal" style={{ fontSize: '15px' }}>{obterMesAnoTexto(dataFiltro)}</span>
