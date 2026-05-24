@@ -30,26 +30,16 @@ export default function App() {
   const [uid, setUid] = useState(null);
   const [step, setStep] = useState(1);
   const [abaAtiva, setAbaAtiva] = useState('inicio');
-  const [subAbaVision, setSubAbaVision] = useState('categorias');
+  const [subAbaVision, setSubAbaVision] = useState('ganhos');
   const [carregando, setCarregando] = useState(false);
   const [comprometidoAberto, setComprometidoAberto] = useState(false);
-
   const [dataFiltro, setDataFiltro] = useState(new Date()); 
-  
-  const obterMesAnoTexto = (date) => {
-    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    return `${meses[date.getMonth()]} de ${date.getFullYear()}`;
-  };
-  
-  const mesAnoChave = `${dataFiltro.getMonth() + 1}-${dataFiltro.getFullYear()}`;
 
-  // Perfil e Login
+  // Estados de Dados
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [nome, setNome] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
-
-  // Estados com fallback para transição segura do localStorage
   const [listaGanhos, setListaGanhos] = useState([]);
   const [formGanho, setFormGanho] = useState({ descricao: '', valor: '' });
   const [editandoGanhoId, setEditandoGanhoId] = useState(null);
@@ -64,25 +54,28 @@ export default function App() {
     { nome: 'Outros', ícone: '📦', cor: '#888888' }
   ]);
   const [novaCatNome, setNovaCatNome] = useState('');
+
   const [despesasFixas, setDespesasFixas] = useState([]);
   const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
   const [historicoPagosFixas, setHistoricoPagosFixas] = useState({});
+
   const [assinaturas, setAssinaturas] = useState([]);
   const [formAssinatura, setFormAssinatura] = useState({ nome: '', valor: '' });
   const [editandoAssinaturaId, setEditandoAssuraId] = useState(null);
+
   const [parcelamentos, setParcelamentos] = useState([]);
   const [formParcela, setFormParcela] = useState({ nome: '', valor: '', atual: '', total: '' });
   const [editandoParcelaId, setEditandoParcelaId] = useState(null);
-  const [despesasVariaveis, setDespesasVariaveis] = useState([]);
 
+  const [despesasVariaveis, setDespesasVariaveis] = useState([]);
   const [mensagens, setMensagens] = useState([
     { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui (ex: "farmácia 20") e eu organizo tudo automaticamente!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
-  // PONTE DE TRANSIÇÃO INTELIGENTE: Puxa da nuvem, se não tiver, resgata do aparelho!
+  // SINCRO 1: CARREGAR DADOS DA NUVEM (FIRESTORE) AO LOGAR
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -94,9 +87,8 @@ export default function App() {
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-          // Se já tem dados na nuvem, usa os da nuvem
           const d = docSnap.data();
-          setNome(d.nome || localStorage.getItem('otis_nome') || '');
+          setNome(d.nome || 'Usuário');
           setListaGanhos(d.listaGanhos || []);
           setDespesasFixas(d.despesasFixas || []);
           setHistoricoPagosFixas(d.historicoPagosFixas || {});
@@ -104,26 +96,8 @@ export default function App() {
           setParcelamentos(d.parcelamentos || []);
           setDespesasVariaveis(d.despesasVariaveis || []);
         } else {
-          // Se a nuvem está vazia, resgata o histórico antigo do localStorage do aparelho
-          setNome(localStorage.getItem('otis_nome') || '');
-          
-          const salvasGanhos = localStorage.getItem('otis_lista_ganhos');
-          if(salvasGanhos) setListaGanhos(JSON.parse(salvasGanhos));
-
-          const salvasFixas = localStorage.getItem('otis_fixas');
-          if(salvasFixas) setDespesasFixas(JSON.parse(salvasFixas));
-
-          const salvasPagosFixas = localStorage.getItem('otis_fixas_pagas_meses');
-          if(salvasPagosFixas) setHistoricoPagosFixas(JSON.parse(salvasPagosFixas));
-
-          const salvasVariaveis = localStorage.getItem('otis_variaveis');
-          if(salvasVariaveis) setDespesasVariaveis(JSON.parse(salvasVariaveis));
-
-          const salvasAssinaturas = localStorage.getItem('otis_assinaturas');
-          if(salvasAssinaturas) setAssinaturas(JSON.parse(salvasAssinaturas));
-
-          const salvosParcelamentos = localStorage.getItem('otis_parcelamentos');
-          if(salvosParcelamentos) setParcelamentos(JSON.parse(salvosParcelamentos));
+          // Se for a primeira vez e a nuvem estiver limpa, puxa fallback local do aparelho
+          setNome(localStorage.getItem('otis_nome') || 'Usuário');
         }
       } else {
         setUsuarioLogado(false);
@@ -133,23 +107,23 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // SALVA AUTOMATICAMENTE NA NUVEM FIRESTORE
+  // SINCRO 2: SALVAMENTO AUTOMÁTICO NA NUVEM FIRESTORE A CADA ALTERAÇÃO
   useEffect(() => {
     if (uid) {
       setDoc(doc(db, "usuarios", uid), {
-        nome,
-        listaGanhos,
-        despesasFixas,
-        historicoPagosFixas,
-        assinaturas,
-        parcelamentos,
-        despesasVariaveis
+        nome, listaGanhos, despesasFixas, historicoPagosFixas, assinaturas, parcelamentos, despesasVariaveis
       }, { merge: true });
     }
   }, [nome, listaGanhos, despesasFixas, historicoPagosFixas, assinaturas, parcelamentos, despesasVariaveis, uid]);
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
+  const obterMesAnoTexto = (date) => {
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return `${meses[date.getMonth()]} de ${date.getFullYear()}`;
+  };
+  
+  const mesAnoChave = `${dataFiltro.getMonth() + 1}-${dataFiltro.getFullYear()}`;
   const ganhosDoMesFiltrados = listaGanhos.filter(g => g.mesAno === mesAnoChave);
   const totalGanhosDoMesAtual = ganhosDoMesFiltrados.reduce((acc, curr) => acc + curr.valor, 0);
   const variaveisDoMes = despesasVariaveis.filter(d => d.mesAno === mesAnoChave);
@@ -179,6 +153,9 @@ export default function App() {
     setCarregando(true);
     try {
       await createUserWithEmailAndPassword(auth, email, senha);
+      if(auth.currentUser) {
+        await setDoc(doc(db, "usuarios", auth.currentUser.uid), { nome: nome || 'Usuário' }, { merge: true });
+      }
       alert('Conta criada com sucesso!');
     } catch (error) { alert(error.message); } finally { setCarregando(false); }
   };
@@ -222,30 +199,13 @@ export default function App() {
         else if (t.includes('lazer') || t.includes('ifood') || t.includes('cinema') || t.includes('festa') || t.includes('show')) cat = 'Lazer';
         else if (t.includes('salao') || t.includes('unha') || t.includes('cabelo') || t.includes('beleza')) cat = 'Beleza';
         else if (t.includes('curso') || t.includes('livro') || t.includes('estudo') || t.includes('faculdade')) cat = 'Estudo';
-        else {
-          const encontrada = categorias.find(c => t.includes(c.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
-          if (encontrada) cat = encontrada.nome;
-        }
 
         let descricaoLimpa = msg.replace(/[R$]*\d+([.,]\d+)?/, '').replace(/(reais|real|reais com|gastei|com|gasto)/gi, '').trim();
         if (!descricaoLimpa) descricaoLimpa = cat;
         descricaoLimpa = descricaoLimpa.charAt(0).toUpperCase() + descricaoLimpa.slice(1);
 
-        const novoGasto = { 
-          id: Date.now(), 
-          descricao: descricaoLimpa, 
-          valor, 
-          categoria: cat, 
-          mesAno: mesAnoChave, 
-          data: new Date().toLocaleDateString('pt-BR')
-        };
+        const novoGasto = { id: Date.now(), descricao: descricaoLimpa, valor, categoria: cat, mesAno: mesAnoChave, data: new Date().toLocaleDateString('pt-BR') };
         setDespesasVariaveis(prev => [...prev, novoGasto]);
-        
-        setMensagens(prev => [...prev, { 
-          id: Date.now()+1, 
-          remetente: 'app', 
-          texto: `Gasto salvo no histórico de ${obterMesAnoTexto(dataFiltro)}!\nFeito, ${nome || 'Izabella'}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
-        }]);
       }
     }, 400);
   };
@@ -481,16 +441,6 @@ export default function App() {
                       </div>
                     </div>
                     
-                    <form onSubmit={(e) => {
-                      e.preventDefault();
-                      if(!novaCatNome.trim()) return;
-                      setCategorias([...categorias, { nome: novaCatNome.trim(), ícone: '🏷️', cor: '#ff6600' }]);
-                      setNovaCatNome('');
-                    }} className="form-box-inline">
-                      <input type="text" placeholder="+ Nova Categoria" value={novaCatNome} onChange={e => setNovaCatNome(e.target.value)} />
-                      <button type="submit">Criar</button>
-                    </form>
-
                     <div className="vision-list">
                       {categorias.map(cat => {
                         const totalCat = totaisPorCategoria[cat.nome] || 0;
