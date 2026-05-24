@@ -34,7 +34,7 @@ export default function App() {
   // Sistema de Data com seletor espaçado
   const [dataFiltro, setDataFiltro] = useState(new Date()); 
   
-  const obtenerMesAnoTexto = (date) => {
+  const obterMesAnoTexto = (date) => {
     const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     return `${meses[date.getMonth()]} de ${date.getFullYear()}`;
   };
@@ -102,7 +102,7 @@ export default function App() {
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui (ex: "farmácia 20") e eu organizo tudo!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui e eu coloco no mês ativo do topo!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -290,6 +290,7 @@ export default function App() {
                   <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
                 </div>
 
+                {/* NOVO SELETOR DE CALENDÁRIO GRANDE E ESPAÇADO NO CENTRO */}
                 <div className="calendar-box-center">
                   <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
                   <span className="text-date-cal">{obterMesAnoTexto(dataFiltro)}</span>
@@ -418,6 +419,7 @@ export default function App() {
 
             {abaAtiva === 'visao' && (
               <div className="page">
+                {/* SELETOR DE CALENDÁRIO ESPAÇADO TAMBÉM NA ABA VISÃO */}
                 <div className="calendar-box-center" style={{ marginBottom: '10px' }}>
                   <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
                   <span className="text-date-cal" style={{ fontSize: '15px' }}>{obterMesAnoTexto(dataFiltro)}</span>
