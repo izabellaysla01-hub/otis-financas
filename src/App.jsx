@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
 import './style.css';
 
+// Suas credenciais reais do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAugQfX81kwXcFR3fhcCy6PLIiw",
   authDomain: "otis-financas.firebaseapp.com",
@@ -10,22 +19,27 @@ const firebaseConfig = {
   appId: "1:884031738300:web:74ae1d953ad4b7"
 };
 
-export default function App() {
-  // Guardar se o usuário está logado ou não
-  const [usuarioLogado, setUsuarioLogado] = useState(() => {
-    return localStorage.getItem('otis_logado') === 'true';
-  });
+// Inicializa o Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
+export default function App() {
+  const [usuarioLogado, setUsuarioLogado] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [step, setStep] = useState(1);
   const [abaAtiva, setAbaAtiva] = useState('inicio');
-  
-  // Dados do Usuário e Ganhos
-  const [formData, setFormData] = useState({ nome: '', sobrenome: '', nascimento: '', motivacao: '' });
+  const [carregando, setCarregando] = useState(false);
+
+  // Campos do formulário
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [nome, setNome] = useState('');
+
+  // Estados Financeiros
   const [ganhos, setGanhos] = useState(() => parseFloat(localStorage.getItem('otis_ganhos')) || 5000.00);
   const [editandoGanhos, setEditandoGanhos] = useState(false);
   const [novoGanhoInput, setNovoGanhoInput] = useState(ganhos.toString());
 
-  // Contas Fixas
   const [despesasFixas, setDespesasFixas] = useState(() => {
     const salvas = localStorage.getItem('otis_fixas');
     return salvas ? JSON.parse(salvas) : [
@@ -35,20 +49,32 @@ export default function App() {
     ];
   });
 
-  const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '' });
+  const [formFixa, setFormFixa] = useState({ descricao: '', valor: '' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
-
-  // Gastos do Chat (Variáveis)
   const [despesasVariaveis, setDespesasVariaveis] = useState(() => {
     const salvas = localStorage.getItem('otis_variaveis');
     return salvas ? JSON.parse(salvas) : [];
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi Izabella! Sou o Otis. 🦊\nDigite um gasto (ex: "Farmácia R$ 30") e eu classifico para você!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite um gasto (ex: "Farmácia R$ 30") e eu classifico para você!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
+
+  // Monitora se tem alguém logado de verdade no Firebase
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUsuarioLogado(true);
+        setUserEmail(user.email);
+      } else {
+        setUsuarioLogado(false);
+        setUserEmail('');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => { localStorage.setItem('otis_ganhos', ganhos); }, [ganhos]);
   useEffect(() => { localStorage.setItem('otis_fixas', JSON.stringify(despesasFixas)); }, [despesasFixas]);
@@ -69,17 +95,37 @@ export default function App() {
     { nome: 'Outros', ícone: '📦', cor: '#888888' }
   ];
 
-  const avancar = () => setStep(step + 1);
-  const voltar = () => setStep(step - 1);
-  
-  const realizarLogin = () => {
-    setUsuarioLogado(true);
-    localStorage.setItem('otis_logado', 'true');
+  // FUNÇÃO DE CADASTRAR REAL NO FIREBASE
+  const criarContaFirebase = async () => {
+    if (!email || !senha) return alert('Preencha e-mail e senha!');
+    setCarregando(true);
+    try {
+      await createUserWithEmailAndPassword(auth, email, senha);
+      alert('Conta criada com sucesso!');
+    } catch (error) {
+      alert('Erro ao criar conta: ' + error.message);
+    } finally {
+      setCarregando(false);
+    }
   };
 
-  const realizarLogout = () => {
-    setUsuarioLogado(false);
-    localStorage.setItem('otis_logado', 'false');
+  // FUNÇÃO DE LOGAR REAL NO FIREBASE
+  const logarFirebase = async () => {
+    if (!email || !senha) return alert('Preencha e-mail e senha!');
+    setCarregando(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+      alert('Logado com sucesso!');
+    } catch (error) {
+      alert('Erro ao entrar: ' + error.message);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  // FUNÇÃO DE DESLOGAR REAL
+  const deslogarFirebase = () => {
+    signOut(auth);
     setStep(1);
   };
 
@@ -105,205 +151,171 @@ export default function App() {
 
         const novoGasto = { id: Date.now(), descricao: msg.replace(/[R$]*\d+([.,]\d+)?/, '').trim() || 'Gasto', valor, categoria: cat, data: '24/05/2026' };
         setDespesasVariaveis(prev => [...prev, novoGasto]);
-        setMensagens(prev => [...prev, { id: Date.now()+1, remetente: 'app', texto: `Vou registrar isso para você agora!\nFeito, Izabella!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}\n• Data: hoje, 24/05/2026` }]);
+        setMensagens(prev => [...prev, { id: Date.now()+1, remetente: 'app', texto: `Vou registrar isso para você agora!\nFeito!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` }]);
       }
-    }, 600);
+    }, 500);
   };
 
   return (
     <div className="container-app">
-      
-      {/* SE NÃO ESTIVER LOGADO: MOSTRA AS TELAS DE CADASTRO/LOGIN */}
+      {carregando && <div className="loading-screen">Carregando...</div>}
+
       {!usuarioLogado ? (
         <div className="flex-cadastro">
-          {step > 1 && (
-            <div className="progress-bar-container">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className={`progress-dot ${i <= step ? 'active' : ''}`} />
-              ))}
-            </div>
-          )}
-          {step > 1 && <button onClick={voltar} className="btn-voltar">← Voltar</button>}
+          {step > 1 && <button onClick={() => setStep(1)} className="btn-voltar">← Voltar</button>}
           
           <div className="content-box">
             {step === 1 && (
-              <div className="step-content text-center">
+              <div className="text-center">
                 <div className="logo-area">
                   <div className="logo-detalhe"></div>
                   <span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span>
                 </div>
                 <h1 className="titulo-principal">Descubra para onde está indo seu dinheiro.</h1>
                 <div className="grupo-botoes">
-                  <button onClick={avancar} className="btn-laranja">Criar uma conta</button>
-                  <button onClick={avancar} className="btn-escuro">Logar com seu E-mail</button>
-                  <div className="divisor-texto">Ou conecte com</div>
-                  <button onClick={realizarLogin} className="btn-branco">Continuar com o Google</button>
+                  <button onClick={() => setStep(2)} className="btn-laranja">Criar uma conta</button>
+                  <button onClick={() => setStep(3)} className="btn-escuro">Entrar com seu E-mail</button>
                 </div>
               </div>
             )}
 
+            {/* TELA DE CADASTRO REAL */}
             {step === 2 && (
               <div className="step-content">
-                <div className="text-center">
-                  <div className="avatar-usuario">🦊</div>
-                  <h2 className="subtitulo">Seus dados</h2>
-                  <p className="descricao">Essas informações mantêm sua conta segura.</p>
-                </div>
+                <h2 className="subtitulo">Criar sua Conta</h2>
+                <p className="descricao">Digite seus dados de acesso.</p>
                 <div className="grupo-inputs">
-                  <input type="text" placeholder="Nome" className="input-custom" />
-                  <input type="text" placeholder="Sobrenome" className="input-custom" />
-                  <input type="text" placeholder="Data de nascimento" className="input-custom" />
+                  <input type="text" placeholder="Seu Nome" value={nome} onChange={(e) => setNome(e.target.value)} className="input-custom" />
+                  <input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom" />
+                  <input type="password" placeholder="Senha (mínimo 6 dígitos)" value={senha} onChange={(e) => setSenha(e.target.value)} className="input-custom" />
                 </div>
-                <button onClick={avancar} className="btn-laranja m-top">Continuar</button>
+                <button onClick={criarContaFirebase} className="btn-laranja m-top">Cadastrar de Verdade</button>
               </div>
             )}
 
+            {/* TELA DE LOGIN REAL */}
             {step === 3 && (
               <div className="step-content">
-                <div>
-                  <h2 className="subtitulo">Qual sua maior motivação?</h2>
-                  <p className="descricao">Selecione suas prioridades financeiras.</p>
+                <h2 className="subtitulo">Entrar no Otis</h2>
+                <p className="descricao">Insira seu e-mail e senha cadastrados.</p>
+                <div className="grupo-inputs">
+                  <input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom" />
+                  <input type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} className="input-custom" />
                 </div>
-                <div className="grupo-botoes">
-                  {["Controlar meus gastos do dia a dia", "Ver meu valor sobrelante livre", "Acompanhar parcelamentos futuros", "Não esquecer das minhas contas fixas"].map((opcao) => (
-                    <button key={opcao} onClick={() => setFormData({...formData, motivacao: opcao})} className={`btn-opcao ${formData.motivacao === opcao ? 'opcao-ativa' : ''}`}>{opcao}</button>
-                  ))}
-                </div>
-                <button onClick={realizarLogin} className="btn-branco m-top">Finalizar e Entrar</button>
+                <button onClick={logarFirebase} className="btn-laranja m-top">Fazer Login</button>
               </div>
             )}
           </div>
-          <div className="footer-seguranca">Dados protegidos com criptografia.</div>
         </div>
       ) : (
-        
-        /* SE ESTIVER LOGADO: ENTRA NO PAINEL PRINCIPAL */
-        <div className="main-scroll">
-          
-          {abaAtiva === 'inicio' && (
-            <div className="page">
-              <div className="top-header">
-                <span className="user-greet">Olá, Izabella 👋</span>
-                {/* Botão de sair que adicionamos aqui para voltar às telas iniciais */}
-                <button className="btn-logout" onClick={realizarLogout}>Sair 🚪</button>
-              </div>
-
-              <div className="card-sobrelante">
-                <span className="label">VALOR SOBRELANTE LIVRE</span>
-                <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
-                <p className="sub">O que sobra real após contas fixas e gastos do chat.</p>
-              </div>
-
-              <div className="row-cards">
-                <div className="mini-card" onClick={() => setEditandoGanhos(true)}>
-                  <span className="mini-label">Ganhos do Mês ✏️</span>
-                  {editandoGanhos ? (
-                    <input type="number" className="edit-input" defaultValue={ganhos} autoFocus onBlur={(e) => { if(e.target.value) setGanhos(parseFloat(e.target.value)); setEditandoGanhos(false); }} />
-                  ) : (
-                    <span className="mini-val text-verde">R$ {ganhos.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
-                  )}
+        <div className="app-logado">
+          <div className="main-scroll">
+            
+            {abaAtiva === 'inicio' && (
+              <div className="page">
+                <div className="top-header">
+                  <span className="user-greet">{userEmail} ✨</span>
+                  <button className="btn-logout" onClick={deslogarFirebase}>Sair 🚪</button>
                 </div>
-                <div className="mini-card">
-                  <span className="mini-label">Comprometido</span>
-                  <span className="mini-val text-laranja">R$ {(totalFixas+totalVariaveis).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
-                </div>
-              </div>
 
-              <div className="section">
-                <h3 className="section-title">Status das Contas Fixas</h3>
-                {despesasFixas.map(f => (
-                  <div key={f.id} className="item-row">
-                    <div className="dot" style={{ background: f.pago ? '#00cc66' : '#ff3333' }}></div>
-                    <div className="info" onClick={() => setDespesasFixas(despesasFixas.map(i => i.id === f.id ? {...i, pago: !i.pago} : i))}>
-                      <p className="name">{f.descricao}</p>
-                      <p className="date">Vence dia {f.vencimento} • {f.pago ? 'Pago' : 'Pendente'}</p>
-                    </div>
-                    <span className="val">R$ {f.valor.toFixed(2)}</span>
+                <div className="card-sobrelante">
+                  <span className="label">VALOR SOBRELANTE LIVRE</span>
+                  <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
+                </div>
+
+                <div className="row-cards">
+                  <div className="mini-card" onClick={() => setEditandoGanhos(true)}>
+                    <span className="mini-label">Ganhos do Mês ✏️</span>
+                    {editandoGanhos ? (
+                      <input type="number" className="edit-input" defaultValue={ganhos} autoFocus onBlur={(e) => { if(e.target.value) setGanhos(parseFloat(e.target.value)); setEditandoGanhos(false); }} />
+                    ) : (
+                      <span className="mini-val text-verde">R$ {ganhos.toLocaleString('pt-BR')}</span>
+                    )}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <div className="mini-card">
+                    <span className="mini-label">Comprometido</span>
+                    <span className="mini-val text-laranja">R$ {(totalFixas+totalVariaveis).toLocaleString('pt-BR')}</span>
+                  </div>
+                </div>
 
-          {abaAtiva === 'fixas' && (
-            <div className="page">
-              <h2 className="title">Gerenciar Fixas</h2>
-              <div className="form-box">
-                <input type="text" placeholder="Nome da Conta" value={formFixa.descricao} onChange={e => setFormFixa({...formFixa, descricao: e.target.value})} />
-                <input type="number" placeholder="Valor (R$)" value={formFixa.valor} onChange={e => setFormFixa({...formFixa, valor: e.target.value})} />
-                <button className="btn-add" onClick={() => {
-                  if(!formFixa.descricao || !formFixa.valor) return;
-                  if(editandoFixaId) {
-                    setDespesasFixas(despesasFixas.map(f => f.id === editandoFixaId ? {...f, descricao: formFixa.descricao, valor: parseFloat(formFixa.valor)} : f));
-                    setEditandoFixaId(null);
-                  } else {
+                <div className="section">
+                  <h3 className="section-title">Contas Fixas</h3>
+                  {despesasFixas.map(f => (
+                    <div key={f.id} className="item-row">
+                      <div className="dot" style={{ background: f.pago ? '#00cc66' : '#ff3333' }}></div>
+                      <div className="info" onClick={() => setDespesasFixas(despesasFixas.map(i => i.id === f.id ? {...i, pago: !i.pago} : i))}>
+                        <p className="name">{f.descricao}</p>
+                        <p className="date">Vence dia {f.vencimento} • {f.pago ? 'Pago' : 'Pendente'}</p>
+                      </div>
+                      <span className="val">R$ {f.valor.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {abaAtiva === 'fixas' && (
+              <div className="page">
+                <h2 className="title">Gerenciar Fixas</h2>
+                <div className="form-box">
+                  <input type="text" placeholder="Nome da Conta" value={formFixa.descricao} onChange={e => setFormFixa({...formFixa, descricao: e.target.value})} className="input-custom" />
+                  <input type="number" placeholder="Valor (R$)" value={formFixa.valor} onChange={e => setFormFixa({...formFixa, valor: e.target.value})} className="input-custom" />
+                  <button className="btn-laranja" onClick={() => {
+                    if(!formFixa.descricao || !formFixa.valor) return;
                     setDespesasFixas([...despesasFixas, { id: Date.now(), descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: 10, pago: false }]);
-                  }
-                  setFormFixa({descricao: '', valor: '', vencimento: ''});
-                }}>{editandoFixaId ? 'Salvar Alteração' : 'Adicionar Conta'}</button>
-              </div>
-              <div className="section">
-                {despesasFixas.map(f => (
-                  <div key={f.id} className="item-row">
-                    <div className="info">
-                      <p className="name">{f.descricao}</p>
-                      <p className="val-small">R$ {f.valor.toFixed(2)}</p>
-                    </div>
-                    <div className="actions">
-                      <button onClick={() => { setEditandoFixaId(f.id); setFormFixa({descricao: f.descricao, valor: f.valor.toString()}); }}>✏️</button>
-                      <button onClick={() => setDespesasFixas(despesasFixas.filter(i => i.id !== f.id))}>🗑️</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {abaAtiva === 'visao' && (
-            <div className="page">
-              <h2 className="title">Visão</h2>
-              <div className="vision-summary">
-                <div className="circle-progress">
-                  <span className="total-num">R$ {totalVariaveis.toFixed(0)}</span>
-                  <span className="total-lab">Gasto Chat</span>
+                    setFormFixa({descricao: '', valor: ''});
+                  }}>Adicionar Conta</button>
                 </div>
               </div>
-              <div className="vision-list">
-                {categorias.map(cat => {
-                  const totalCat = despesasVariaveis.filter(d => d.categoria === cat.nome).reduce((s, d) => s + d.valor, 0);
-                  const perc = totalVariaveis > 0 ? (totalCat / totalVariaveis) * 100 : 0;
-                  return (
-                    <div key={cat.nome} className="vision-item">
-                      <div className="vision-info">
-                        <span>{cat.ícone} {cat.nome}</span>
-                        <span>R$ {totalCat.toFixed(2)}</span>
-                      </div>
-                      <div className="bar-bg">
-                        <div className="bar-fill" style={{ width: `${perc}%`, background: cat.cor }}></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            )}
 
-          {abaAtiva === 'chat' && (
-            <div className="chat-container">
-              <div className="chat-messages">
-                {mensagens.map(m => (
-                  <div key={m.id} className={`bubble ${m.remetente}`}>
-                    {m.texto.split('\n').map((p, i) => <p key={i}>{p}</p>)}
+            {abaAtiva === 'visao' && (
+              <div className="page">
+                <h2 className="title">Visão</h2>
+                <div className="vision-summary">
+                  <div className="circle-progress">
+                    <span className="total-num">R$ {totalVariaveis.toFixed(2)}</span>
+                    <span className="total-lab">Gasto Total</span>
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
+                </div>
+                <div className="vision-list">
+                  {categorias.map(cat => {
+                    const totalCat = despesasVariaveis.filter(d => d.categoria === cat.nome).reduce((s, d) => s + d.valor, 0);
+                    const perc = totalVariaveis > 0 ? (totalCat / totalVariaveis) * 100 : 0;
+                    return (
+                      <div key={cat.nome} className="vision-item">
+                        <div className="vision-info">
+                          <span>{cat.ícone} {cat.nome}</span>
+                          <span>R$ {totalCat.toFixed(2)} ({perc.toFixed(0)}%)</span>
+                        </div>
+                        <div className="bar-bg">
+                          <div className="bar-fill" style={{ width: `${perc || 0}%`, background: cat.cor }}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <form className="chat-input-area" onSubmit={enviarMensagemChat}>
-                <input type="text" placeholder="Fale com o Otis..." value={inputText} onChange={e => setInputText(e.target.value)} />
-                <button type="submit">➔</button>
-              </form>
-            </div>
-          )}
+            )}
+
+            {abaAtiva === 'chat' && (
+              <div className="chat-container">
+                <div className="chat-messages">
+                  {mensagens.map(m => (
+                    <div key={m.id} className={`bubble ${m.remetente}`}>
+                      {m.texto.split('\n').map((p, i) => <p key={i}>{p}</p>)}
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+                <form className="chat-input-area" onSubmit={enviarMensagemChat}>
+                  <input type="text" placeholder="Fale com o Otis..." value={inputText} onChange={e => setInputText(e.target.value)} />
+                  <button type="submit">➔</button>
+                </form>
+              </div>
+            )}
+
+          </div>
 
           <nav className="nav-floating">
             <button className={abaAtiva === 'inicio' ? 'active' : ''} onClick={() => setAbaAtiva('inicio')}>🏠</button>
