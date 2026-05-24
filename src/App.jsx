@@ -34,7 +34,7 @@ export default function App() {
   // Sistema de Data com seletor espaçado
   const [dataFiltro, setDataFiltro] = useState(new Date()); 
   
-  const obterMesAnoTexto = (date) => {
+  const obtenerMesAnoTexto = (date) => {
     const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     return `${meses[date.getMonth()]} de ${date.getFullYear()}`;
   };
@@ -102,7 +102,7 @@ export default function App() {
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui e eu coloco no mês ativo do topo!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui (ex: "farmácia 20") e eu organizo tudo!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -357,7 +357,6 @@ export default function App() {
                           <p className="name">{f.descricao}</p>
                           <p className="date">Vence dia {f.vencimento} • {estaPago ? 'Pago' : 'Pendente'}</p>
                         </div>
-                        {/* LINHA COERENTE E CORRIGIDA ABAIXO */}
                         <span className="val">R$ {f.valor.toFixed(2)}</span>
                       </div>
                     );
