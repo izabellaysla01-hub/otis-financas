@@ -31,12 +31,12 @@ export default function App() {
   const [carregando, setCarregando] = useState(false);
   const [comprometidoAberto, setComprometidoAberto] = useState(false);
 
-  // SISTEMA DE DATA DINÂMICA (Controla a virada de mês de forma automática)
-  const [dataFiltro, setDataFiltro] = useState(new Date()); // Começa no mês atual (Maio 2026)
+  // Sistema de Data com seletor espaçado
+  const [dataFiltro, setDataFiltro] = useState(new Date()); 
   
   const obterMesAnoTexto = (date) => {
-    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return `${meses[date.getMonth()]} ${date.getFullYear()}`;
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return `${meses[date.getMonth()]} de ${date.getFullYear()}`;
   };
   
   const mesAnoChave = `${dataFiltro.getMonth() + 1}-${dataFiltro.getFullYear()}`;
@@ -47,12 +47,11 @@ export default function App() {
   const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || '');
   const [novaSenha, setNovaSenha] = useState('');
 
-  // Financeiro amarrado ao mês selecionado
+  // Financeiro Dinâmico
   const [ganhosMensais, setGanhosMensais] = useState(() => {
     const salvos = localStorage.getItem('otis_ganhos_meses');
     return salvos ? JSON.parse(salvos) : {};
   });
-  const [editandoGanhos, setEditandoGanhos] = useState(false);
 
   // Categorias
   const [categorias, setCategorias] = useState(() => {
@@ -77,13 +76,12 @@ export default function App() {
   const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
 
-  // Controle de pagamentos de fixas por mês
   const [historicoPagosFixas, setHistoricoPagosFixas] = useState(() => {
     const salvos = localStorage.getItem('otis_fixas_pagas_meses');
     return salvos ? JSON.parse(salvos) : {};
   });
 
-  // Assinaturas e Parcelamentos Dinâmicos
+  // Assinaturas e Parcelamentos
   const [assinaturas, setAssinaturas] = useState(() => {
     const salvas = localStorage.getItem('otis_assinaturas');
     return salvas ? JSON.parse(salvas) : [];
@@ -98,14 +96,13 @@ export default function App() {
   const [formParcela, setFormParcela] = useState({ nome: '', valor: '', atual: '', total: '' });
   const [editandoParcelaId, setEditandoParcelaId] = useState(null);
 
-  // Gastos do Chat vinculados por Mês
   const [despesasVariaveis, setDespesasVariaveis] = useState(() => {
     const salvas = localStorage.getItem('otis_variaveis');
     return salvas ? JSON.parse(salvas) : [];
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nOs gastos digitados aqui caem direto no mês selecionado!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui e eu coloco no mês ativo do topo!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -137,17 +134,12 @@ export default function App() {
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
-  // Pegar os ganhos específicos do mês ativo ou iniciar em 0
   const ganhosDoMesAtual = ganhosMensais[mesAnoChave] || 0;
-
-  // Filtrar os gastos variáveis que pertencem unicamente ao mês e ano ativo
   const variaveisDoMes = despesasVariaveis.filter(d => d.mesAno === mesAnoChave);
 
   const totalFixas = despesasFixas.reduce((acc, curr) => acc + curr.valor, 0);
   const totalVariaveis = variaveisDoMes.reduce((acc, curr) => acc + curr.valor, 0);
   const totalAssinaturas = assinaturas.reduce((acc, curr) => acc + curr.valor, 0);
-  
-  // Parcelamentos inteligentes: só contam se a parcela atual não estourou o total
   const totalParcelas = parcelamentos.reduce((acc, curr) => acc + curr.valor, 0);
   
   const comprometidoTotal = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas;
@@ -163,14 +155,6 @@ export default function App() {
     const novaData = new Date(dataFiltro);
     novaData.setMonth(novaData.getMonth() + direcao);
     setDataFiltro(novaData);
-  };
-
-  const alternarPagoFixa = (id) => {
-    const chavePago = `${mesAnoChave}_${id}`;
-    setHistoricoPagosFixas({
-      ...historicoPagosFixas,
-      [chavePago]: !historicoPagosFixas[chavePago]
-    });
   };
 
   const criarContaFirebase = async () => {
@@ -236,7 +220,7 @@ export default function App() {
           descricao: descricaoLimpa, 
           valor, 
           categoria: cat, 
-          mesAno: mesAnoChave, // Gasto amarrado na folha do mês atual!
+          mesAno: mesAnoChave, 
           data: new Date().toLocaleDateString('pt-BR')
         };
         setDespesasVariaveis(prev => [...prev, novoGasto]);
@@ -244,7 +228,7 @@ export default function App() {
         setMensagens(prev => [...prev, { 
           id: Date.now()+1, 
           remetente: 'app', 
-          texto: `Registrado no histórico de ${obterMesAnoTexto(dataFiltro)}!\nFeito, ${nome || 'Izabella'}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
+          texto: `Gasto salvo no histórico de ${obterMesAnoTexto(dataFiltro)}!\nFeito, ${nome || 'Izabella'}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
         }]);
       }
     }, 400);
@@ -303,17 +287,18 @@ export default function App() {
               <div className="page">
                 <div className="top-header">
                   <span className="user-greet">Olá, {nome || 'Usuário'} 👋</span>
-                  
-                  {/* SELETOR DE MESES PROFISSIONAL IGUAL AO PRINT */}
-                  <div className="calendar-navigator">
-                    <button onClick={() => navegarMes(-1)}>‹</button>
-                    <span>{obterMesAnoTexto(dataFiltro)}</span>
-                    <button onClick={() => navegarMes(1)}>›</button>
-                  </div>
+                  <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
+                </div>
+
+                {/* NOVO SELETOR DE CALENDÁRIO GRANDE E ESPAÇADO NO CENTRO */}
+                <div className="calendar-box-center">
+                  <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
+                  <span className="text-date-cal">{obterMesAnoTexto(dataFiltro)}</span>
+                  <button className="btn-arrow-cal" onClick={() => navegarMes(1)}>›</button>
                 </div>
 
                 <div className="card-sobrelante">
-                  <span className="label">VALOR SOBRELANTE LIVRE ({obterMesAnoTexto(dataFiltro)})</span>
+                  <span className="label">VALOR SOBRELANTE LIVRE</span>
                   <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
                   <div className="dash-bar-bg" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginTop: '12px' }}>
                     <div className="dash-bar-fill" style={{ width: `${Math.max(0, Math.min(percSobra, 100))}%`, background: '#fff' }}></div>
@@ -322,7 +307,7 @@ export default function App() {
 
                 <div className="mini-card-ganho" onClick={() => setEditandoGanhos(true)}>
                   <div className="dash-bar-info">
-                    <span className="dash-bar-label">Ganhos de {obterMesAnoTexto(dataFiltro)} ✏️</span>
+                    <span className="dash-bar-label">Ganhos Cadastrados no Mês ✏️</span>
                     <span className="dash-bar-value text-verde">R$ {ganhosDoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
                   {editandoGanhos && (
@@ -336,7 +321,7 @@ export default function App() {
 
                 <div className="section-comprometido-drop">
                   <div className="comprometido-header" onClick={() => setComprometidoAberto(!comprometidoAberto)} style={{ cursor: 'pointer' }}>
-                    <span className="section-title">Comprometido {obterMesAnoTexto(dataFiltro)} {comprometidoAberto ? '▲' : '▼'}</span>
+                    <span className="section-title">Comprometido no Mês {comprometidoAberto ? '▲' : '▼'}</span>
                     <span className="comprometido-total-num">R$ {comprometidoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
                   
@@ -366,9 +351,12 @@ export default function App() {
                     return (
                       <div key={f.id} className="item-row">
                         <div className="dot" style={{ background: estaPago ? '#33ff99' : '#ff4d4d' }}></div>
-                        <div className="info" onClick={() => alternarPagoFixa(f.id)}>
+                        <div className="info" onClick={() => {
+                          const chavePago = `${mesAnoChave}_${f.id}`;
+                          setHistoricoPagosFixas({ ...historicoPagosFixas, [chavePago]: !historicoPagosFixas[chavePago] });
+                        }}>
                           <p className="name">{f.descricao}</p>
-                          <p className="date">Vence dia {f.vencimento} • {estaPago ? '✅ Pago neste mês' : '⏳ Pendente'}</p>
+                          <p className="date">Vence dia {f.vencimento} • {estaPago ? 'Pago' : 'Pendente'}</p>
                         </div>
                         <span className="val">R$ {f.valor.toFixed(2)}</span>
                       </div>
@@ -377,12 +365,12 @@ export default function App() {
                 </div>
 
                 <div className="section">
-                  <h3 className="section-title">Gastos do Chat em {obterMesAnoTexto(dataFiltro)}</h3>
-                  {variaveisDoMes.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhum gasto neste mês.</p> : variaveisDoMes.map(g => (
+                  <h3 className="section-title">Lançamentos do Chat (Este Mês)</h3>
+                  {variaveisDoMes.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhum gasto lançado pelo chat.</p> : variaveisDoMes.map(g => (
                     <div key={g.id} className="item-row">
                       <div className="info">
                         <p className="name">{g.descricao}</p>
-                        <p className="date">{g.categoria} • {g.data}</p>
+                        <p className="date">Categoria: {g.categoria}</p>
                       </div>
                       <span className="val text-laranja" style={{ marginRight: '14px' }}>R$ {g.valor.toFixed(2)}</span>
                       <button className="btn-action-del-chat" onClick={() => setDespesasVariaveis(despesasVariaveis.filter(i => i.id !== g.id))}>✕</button>
@@ -431,18 +419,17 @@ export default function App() {
 
             {abaAtiva === 'visao' && (
               <div className="page">
-                {/* SELETOR DE MESES REPLICADO TAMBÉM NA VISION */}
-                <div className="sub-nav-vision" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="calendar-navigator" style={{ margin: 0 }}>
-                    <button onClick={() => navegarMes(-1)}>‹</button>
-                    <span style={{ fontSize: '14px' }}>{obterMesAnoTexto(dataFiltro)}</span>
-                    <button onClick={() => navegarMes(1)}>›</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parc.</button>
-                    <button className={subAbaVision === 'assinaturas' ? 'active' : ''} onClick={() => setSubAbaVision('assinaturas')}>📺 Assin.</button>
-                    <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Cat.</button>
-                  </div>
+                {/* SELETOR DE CALENDÁRIO ESPAÇADO TAMBÉM NA ABA VISÃO */}
+                <div className="calendar-box-center" style={{ marginBottom: '10px' }}>
+                  <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
+                  <span className="text-date-cal" style={{ fontSize: '15px' }}>{obterMesAnoTexto(dataFiltro)}</span>
+                  <button className="btn-arrow-cal" onClick={() => navegarMes(1)}>›</button>
+                </div>
+
+                <div className="sub-nav-vision">
+                  <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parcelamentos</button>
+                  <button className={subAbaVision === 'assinaturas' ? 'active' : ''} onClick={() => setSubAbaVision('assinaturas')}>📺 Assinaturas</button>
+                  <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Categorias</button>
                 </div>
 
                 {subAbaVision === 'categorias' && (
@@ -528,7 +515,7 @@ export default function App() {
                         if(!formParcela.nome || !formParcela.valor) return;
                         if(editandoParcelaId) {
                           setParcelamentos(parcelamentos.map(p => p.id === editandoParcelaId ? {...p, nome: formParcela.nome, valor: parseFloat(formParcela.valor), parcelaAtual: parseInt(formParcela.atual), parcelaTotal: parseInt(formParcela.total)} : p));
-                          setParcelamentos(null);
+                          setEditandoParcelaId(null);
                         } else {
                           setParcelamentos([...parcelamentos, { id: Date.now(), nome: formParcela.nome, valor: parseFloat(formParcela.valor), parcelaAtual: parseInt(formParcela.atual) || 1, parcelaTotal: parseInt(formParcela.total) || 12 }]);
                         }
@@ -603,11 +590,21 @@ export default function App() {
           </div>
 
           <nav className="nav-floating">
-            <button className={abaAtiva === 'inicio' ? 'active' : ''} onClick={() => setAbaAtiva('inicio')}>🏠</button>
-            <button className={abaAtiva === 'fixas' ? 'active' : ''} onClick={() => setAbaAtiva('fixas')}>📋</button>
-            <button className={abaAtiva === 'visao' ? 'active' : ''} onClick={() => setAbaAtiva('visao')}>📊</button>
-            <button className={abaAtiva === 'chat' ? 'active' : ''} onClick={() => setAbaAtiva('chat')}>💬</button>
-            <button className={abaAtiva === 'perfil' ? 'active' : ''} onClick={() => setAbaAtiva('perfil')}>👤</button>
+            <button className={abaAtiva === 'inicio' ? 'active' : ''} onClick={() => setAbaAtiva('inicio')}>
+              <span>🏠</span><span className="nav-text">Início</span>
+            </button>
+            <button className={abaAtiva === 'fixas' ? 'active' : ''} onClick={() => setAbaAtiva('fixas')}>
+              <span>📋</span><span className="nav-text">Fixas</span>
+            </button>
+            <button className={abaAtiva === 'visao' ? 'active' : ''} onClick={() => setAbaAtiva('visao')}>
+              <span>📊</span><span className="nav-text">Visão</span>
+            </button>
+            <button className={abaAtiva === 'chat' ? 'active' : ''} onClick={() => setAbaAtiva('chat')}>
+              <span>💬</span><span className="nav-text">Chat</span>
+            </button>
+            <button className={abaAtiva === 'perfil' ? 'active' : ''} onClick={() => setAbaAtiva('perfil')}>
+              <span>👤</span><span className="nav-text">Perfil</span>
+            </button>
           </nav>
         </div>
       )}
