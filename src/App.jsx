@@ -9,17 +9,17 @@ import {
 } from 'firebase/auth';
 import './style.css';
 
-// Suas credenciais reais do Firebase
+// Suas credenciais do Firebase totalmente corrigidas e completas!
 const firebaseConfig = {
   apiKey: "AIzaSyAugQfX81kwXcFR3fhcCy6PLIiw",
   authDomain: "otis-financas.firebaseapp.com",
   projectId: "otis-financas",
   storageBucket: "otis-financas.firebasestorage.app",
   messagingSenderId: "884031738300",
-  appId: "1:884031738300:web:74ae1d953ad4b7"
+  appId: "1:884031738300:web:74ae1d953ad4b7e5122dbe"
 };
 
-// Inicializa o Firebase
+// Inicializa o Firebase com segurança
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
@@ -30,7 +30,7 @@ export default function App() {
   const [abaAtiva, setAbaAtiva] = useState('inicio');
   const [carregando, setCarregando] = useState(false);
 
-  // Campos do formulário
+  // Formulário
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [nome, setNome] = useState('');
@@ -57,12 +57,12 @@ export default function App() {
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite um gasto (ex: "Farmácia R$ 30") e eu classifico para você!' }
+    { id: 1, remetente: 'app', texto: 'Oi Izabella! Sou o Otis. 🦊\nDigite um gasto (ex: "Farmácia R$ 30") e eu organizo nas suas categorias da Visão!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Monitora se tem alguém logado de verdade no Firebase
+  // Monitora autenticação real
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -95,13 +95,12 @@ export default function App() {
     { nome: 'Outros', ícone: '📦', cor: '#888888' }
   ];
 
-  // FUNÇÃO DE CADASTRAR REAL NO FIREBASE
   const criarContaFirebase = async () => {
     if (!email || !senha) return alert('Preencha e-mail e senha!');
     setCarregando(true);
     try {
       await createUserWithEmailAndPassword(auth, email, senha);
-      alert('Conta criada com sucesso!');
+      alert('Conta criada com sucesso de verdade!');
     } catch (error) {
       alert('Erro ao criar conta: ' + error.message);
     } finally {
@@ -109,7 +108,6 @@ export default function App() {
     }
   };
 
-  // FUNÇÃO DE LOGAR REAL NO FIREBASE
   const logarFirebase = async () => {
     if (!email || !senha) return alert('Preencha e-mail e senha!');
     setCarregando(true);
@@ -121,12 +119,6 @@ export default function App() {
     } finally {
       setCarregando(false);
     }
-  };
-
-  // FUNÇÃO DE DESLOGAR REAL
-  const deslogarFirebase = () => {
-    signOut(auth);
-    setStep(1);
   };
 
   const enviarMensagemChat = (e) => {
@@ -158,7 +150,7 @@ export default function App() {
 
   return (
     <div className="container-app">
-      {carregando && <div className="loading-screen">Carregando...</div>}
+      {carregando && <div className="loading-overlay">Carregando no Firebase...</div>}
 
       {!usuarioLogado ? (
         <div className="flex-cadastro">
@@ -166,7 +158,7 @@ export default function App() {
           
           <div className="content-box">
             {step === 1 && (
-              <div className="text-center">
+              <div className="text-center-box">
                 <div className="logo-area">
                   <div className="logo-detalhe"></div>
                   <span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span>
@@ -179,7 +171,6 @@ export default function App() {
               </div>
             )}
 
-            {/* TELA DE CADASTRO REAL */}
             {step === 2 && (
               <div className="step-content">
                 <h2 className="subtitulo">Criar sua Conta</h2>
@@ -193,7 +184,6 @@ export default function App() {
               </div>
             )}
 
-            {/* TELA DE LOGIN REAL */}
             {step === 3 && (
               <div className="step-content">
                 <h2 className="subtitulo">Entrar no Otis</h2>
@@ -215,12 +205,13 @@ export default function App() {
               <div className="page">
                 <div className="top-header">
                   <span className="user-greet">{userEmail} ✨</span>
-                  <button className="btn-logout" onClick={deslogarFirebase}>Sair 🚪</button>
+                  <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
                 </div>
 
                 <div className="card-sobrelante">
                   <span className="label">VALOR SOBRELANTE LIVRE</span>
                   <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
+                  <p className="sub">O que sobra real após contas fixas e gastos do chat.</p>
                 </div>
 
                 <div className="row-cards">
@@ -239,7 +230,7 @@ export default function App() {
                 </div>
 
                 <div className="section">
-                  <h3 className="section-title">Contas Fixas</h3>
+                  <h3 className="section-title">Status das Contas Fixas</h3>
                   {despesasFixas.map(f => (
                     <div key={f.id} className="item-row">
                       <div className="dot" style={{ background: f.pago ? '#00cc66' : '#ff3333' }}></div>
@@ -248,6 +239,20 @@ export default function App() {
                         <p className="date">Vence dia {f.vencimento} • {f.pago ? 'Pago' : 'Pendente'}</p>
                       </div>
                       <span className="val">R$ {f.valor.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="section" style={{ marginTop: '20px' }}>
+                  <h3 className="section-title">Gastos do dia a dia (Chat)</h3>
+                  {despesasVariaveis.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhum gasto lançado.</p> : despesasVariaveis.map(g => (
+                    <div key={g.id} className="item-row">
+                      <div className="info">
+                        <p className="name">{g.descricao || 'Gasto'}</p>
+                        <p className="date">{g.categoria} • 24/05/2026</p>
+                      </div>
+                      <span className="val text-laranja" style={{ marginRight: '10px' }}>R$ {g.valor.toFixed(2)}</span>
+                      <button style={{ background: 'none', border: 'none', color: '#ff3333', cursor: 'pointer' }} onClick={() => setDespesasVariaveis(despesasVariaveis.filter(i => i.id !== g.id))}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -266,6 +271,17 @@ export default function App() {
                     setFormFixa({descricao: '', valor: ''});
                   }}>Adicionar Conta</button>
                 </div>
+                <div className="section">
+                  {despesasFixas.map(f => (
+                    <div key={f.id} className="item-row">
+                      <div className="info">
+                        <p className="name">{f.descricao}</p>
+                        <p className="date">R$ {f.valor.toFixed(2)}</p>
+                      </div>
+                      <button onClick={() => setDespesasFixas(despesasFixas.filter(i => i.id !== f.id))} style={{ background: 'none', border: 'none', color: '#ff3333' }}>🗑️</button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -275,7 +291,7 @@ export default function App() {
                 <div className="vision-summary">
                   <div className="circle-progress">
                     <span className="total-num">R$ {totalVariaveis.toFixed(2)}</span>
-                    <span className="total-lab">Gasto Total</span>
+                    <span className="total-lab">Gasto Chat</span>
                   </div>
                 </div>
                 <div className="vision-list">
