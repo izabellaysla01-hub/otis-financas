@@ -180,6 +180,11 @@ export default function App() {
     setDataFiltro(novaData);
   };
 
+  const obterMesAnoTexto = (date) => {
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return `${meses[date.getMonth()]} de ${date.getFullYear()}`;
+  };
+
   const criarContaFirebase = async () => {
     if (!email || !senha) return alert('Preencha e-mail e senha!');
     setCarregando(true);
