@@ -54,7 +54,7 @@ export default function App() {
   });
   const [editandoGanhos, setEditandoGanhos] = useState(false);
 
-  // Categorias Dinâmicas + Inteligência de Criação
+  // Categorias Dinâmicas
   const [categorias, setCategorias] = useState(() => {
     const salvas = localStorage.getItem('otis_categorias');
     return salvas ? JSON.parse(salvas) : [
@@ -103,7 +103,7 @@ export default function App() {
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui (ex: "farmácia 20") e eu gerencio tudo automaticamente!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui (ex: "farmácia 20") e eu organizo tudo automaticamente!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -246,10 +246,7 @@ export default function App() {
             
             {step === 1 && (
               <div className="text-center-box">
-                <div className="logo-area">
-                  <div className="logo-detalhe"></div>
-                  <span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span>
-                </div>
+                <div className="logo-area"><div className="logo-detalhe"></div><span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span></div>
                 <h1 className="titulo-principal">Descubra para onde está indo seu dinheiro.</h1>
                 <div className="grupo-botoes">
                   <button onClick={() => setStep(2)} className="btn-laranja">Criar uma conta</button>
@@ -289,19 +286,18 @@ export default function App() {
             
             {abaAtiva === 'inicio' && (
               <div className="page">
+                {/* CABEÇALHO ALINHADO SEM MÃOZINHA EMBAIXO DO NADA */}
                 <div className="top-header">
-                  <span className="user-greet">Olá, {nome || 'Usuário'} 👋</span>
+                  <span className="user-greet">Olá, {nome || 'Usuário'}</span>
                   <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
                 </div>
 
-                {/* CALENDÁRIO CENTRALIZADO E ESPAÇADO */}
                 <div className="calendar-box-center">
                   <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
                   <span className="text-date-cal">{obterMesAnoTexto(dataFiltro)}</span>
                   <button className="btn-arrow-cal" onClick={() => navegarMes(1)}>›</button>
                 </div>
 
-                {/* CARD GRADIENTE LARANJA DO SOBRELANTE LIVRE */}
                 <div className="card-sobrelante">
                   <span className="label">VALOR SOBRELANTE LIVRE</span>
                   <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
@@ -310,10 +306,10 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* CARD EXCLUSIVO DO GANHO MENSAL */}
                 <div className="mini-card-ganho" onClick={() => setEditandoGanhos(true)}>
                   <div className="dash-bar-info">
-                    <span className="dash-bar-label">Ganhos Cadastrados no Mês ✏️</span>
+                    {/* FONTE MAIOR AJUSTADA AQUI */}
+                    <span className="dash-bar-label font-destaque-ganho">Ganhos de {obterMesAnoTexto(dataFiltro)} ✏️</span>
                     <span className="dash-bar-value text-verde">R$ {ganhosDoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
                   {editandoGanhos && (
@@ -325,7 +321,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* MENU SUSPENSO DO COMPROMETIDO INDIVIDUAL */}
                 <div className="section-comprometido-drop">
                   <div className="comprometido-header" onClick={() => setComprometidoAberto(!comprometidoAberto)} style={{ cursor: 'pointer' }}>
                     <span className="section-title">Comprometido no Mês {comprometidoAberto ? '▲' : '▼'}</span>
@@ -595,7 +590,6 @@ export default function App() {
 
           </div>
 
-          {/* MENU COMPACTADO PREMIUM COM TEXTO LEGÍVEL EMBAIXO */}
           <nav className="nav-floating">
             <button className={abaAtiva === 'inicio' ? 'active' : ''} onClick={() => setAbaAtiva('inicio')}>
               <span>🏠</span><span className="nav-text">Início</span>
