@@ -5,7 +5,8 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  updatePassword
 } from 'firebase/auth';
 import './style.css';
 
@@ -23,17 +24,20 @@ const auth = getAuth(app);
 
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [step, setStep] = useState(1);
   const [abaAtiva, setAbaAtiva] = useState('inicio');
   const [subAbaVision, setSubAbaVision] = useState('categorias');
   const [carregando, setCarregando] = useState(false);
 
+  // Autenticação e Perfil
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || 'Izabella');
+  const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || '');
+  const [novaSenha, setNovaSenha] = useState('');
 
-  // Dashboard
-  const [ganhos, setGanhos] = useState(() => parseFloat(localStorage.getItem('otis_ganhos')) || 5000.00);
+  // Dashboard - Inicializado zerado para venda
+  const [ganhos, setGanhos] = useState(() => parseFloat(localStorage.getItem('otis_ganhos')) || 0);
   const [editandoGanhos, setEditandoGanhos] = useState(false);
   const [novoGanhoInput, setNovoGanhoInput] = useState(ganhos.toString());
 
@@ -52,55 +56,55 @@ export default function App() {
   });
   const [novaCatNome, setNovaCatNome] = useState('');
 
-  // Contas Fixas
+  // Listas Financeiras - Inicializadas vazias para venda
   const [despesasFixas, setDespesasFixas] = useState(() => {
     const salvas = localStorage.getItem('otis_fixas');
-    return salvas ? JSON.parse(salvas) : [
-      { id: 1, descricao: 'Internet Alis', valor: 99.90, vencimento: 10, pago: false },
-      { id: 2, descricao: 'Netflix', valor: 55.90, vencimento: 15, pago: true },
-      { id: 3, descricao: 'Conta de Luz', valor: 180.00, vencimento: 20, pago: false }
-    ];
+    return salvas ? JSON.parse(salvas) : [];
   });
   const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '10' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
 
-  // Assinaturas
   const [assinaturas, setAssinaturas] = useState(() => {
     const salvas = localStorage.getItem('otis_assinaturas');
-    return salvas ? JSON.parse(salvas) : [
-      { id: 1, nome: 'Spotify Family', valor: 34.90 },
-      { id: 2, nome: 'Canva Pro', valor: 28.90 }
-    ];
+    return salvas ? JSON.parse(salvas) : [];
   });
   const [formAssinatura, setFormAssinatura] = useState({ nome: '', valor: '' });
-  const [editandoAssinaturaId, setEditandoAssinaturaId] = useState(null);
+  const [editandoAssinaturaId, setEditandoAssuraId] = useState(null);
 
-  // Parcelamentos
   const [parcelamentos, setParcelamentos] = useState(() => {
     const salvos = localStorage.getItem('otis_parcelamentos');
-    return salvos ? JSON.parse(salvos) : [
-      { id: 1, nome: 'Parcela Notebook', valor: 250.00, parcelaAtual: 3, parcelaTotal: 10 }
-    ];
+    return salvos ? JSON.parse(salvos) : [];
   });
   const [formParcela, setFormParcela] = useState({ nome: '', valor: '', atual: '', total: '' });
   const [editandoParcelaId, setEditandoParcelaId] = useState(null);
 
-  // Gastos do Chat
   const [despesasVariaveis, setDespesasVariaveis] = useState(() => {
     const salvas = localStorage.getItem('otis_variaveis');
     return salvas ? JSON.parse(salvas) : [];
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi Izabella! Sou o Otis. 🦊\nSó falar o gasto (ex: "farmácia 20") que eu já jogo na categoria certa!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui e eu organizo tudo automaticamente!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => { setUsuarioLogado(!!user); });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUsuarioLogado(true);
+        setUserEmail(user.email);
+        if (!nome) {
+          const nomeExtraido = user.email.split('@')[0];
+          const nomeFormatado = nomeExtraido.charAt(0).toUpperCase() + nomeExtraido.slice(1);
+          setNome(nomeFormatado);
+        }
+      } else {
+        setUsuarioLogado(false);
+      }
+    });
     return () => unsubscribe();
-  }, []);
+  }, [nome]);
 
   useEffect(() => { 
     localStorage.setItem('otis_ganhos', ganhos);
@@ -119,14 +123,48 @@ export default function App() {
   const totalAssinaturas = assinaturas.reduce((acc, curr) => acc + curr.valor, 0);
   const totalParcelas = parcelamentos.reduce((acc, curr) => acc + curr.valor, 0);
   
-  // O comprometido total soma todas as obrigações e gastos do app
   const comprometidoTotal = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas;
   const valorSobrelante = ganhos - comprometidoTotal;
+  const percSobra = ganhos > 0 ? (valorSobrelante / ganhos) * 100 : 0;
 
   const totaisPorCategoria = categorias.reduce((acc, cat) => {
     acc[cat.nome] = despesasVariaveis.filter(d => d.categoria === cat.nome).reduce((sum, d) => sum + d.valor, 0);
     return acc;
   }, {});
+
+  const criarContaFirebase = async () => {
+    if (!email || !senha) return alert('Preencha e-mail e senha!');
+    setCarregando(true);
+    try {
+      await createUserWithEmailAndPassword(auth, email, senha);
+      localStorage.setItem('otis_nome', nome);
+      alert('Conta criada com sucesso!');
+    } catch (error) { alert(error.message); } 
+    finally { setCarregando(false); }
+  };
+
+  const logarFirebase = async () => {
+    if (!email || !senha) return alert('Preencha e-mail e senha!');
+    setCarregando(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+    } catch (error) { alert(error.message); } 
+    finally { setCarregando(false); }
+  };
+
+  const alterarSenhaReal = async (e) => {
+    e.preventDefault();
+    if(!novaSenha || novaSenha.length < 6) return alert('A senha precisa de no mínimo 6 dígitos.');
+    setCarregando(true);
+    try {
+      if(auth.currentUser) {
+        await updatePassword(auth.currentUser, novaSenha);
+        alert('Senha alterada com sucesso!');
+        setNovaSenha('');
+      }
+    } catch(error) { alert(error.message); }
+    finally { setCarregando(false); }
+  };
 
   const enviarMensagemChat = (e) => {
     e.preventDefault();
@@ -140,14 +178,13 @@ export default function App() {
       if (valorMatch) {
         const valor = parseFloat(valorMatch[0].replace(',', '.'));
         let cat = 'Outros';
-        const t = msg.toLowerCase();
+        const t = msg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
-        // Regras de detecção precisas de categoria
-        if (t.includes('saude') || t.includes('remedio') || t.includes('farmacia') || t.includes('remédio')) cat = 'Saúde';
-        else if (t.includes('uber') || t.includes('onibus') || t.includes('gasolina') || t.includes('ônibus') || t.includes('transporte')) cat = 'Transporte';
-        else if (t.includes('mercado') || t.includes('comida') || t.includes('compras') || t.includes('feira')) cat = 'Market';
+        if (t.includes('saude') || t.includes('remedio') || t.includes('farmacia')) cat = 'Saúde';
+        else if (t.includes('uber') || t.includes('onibus') || t.includes('gasolina') || t.includes('transporte')) cat = 'Transporte';
+        else if (t.includes('mercado') || t.includes('comida') || t.includes('compras') || t.includes('feira')) cat = 'Mercado';
         else if (t.includes('lazer') || t.includes('ifood') || t.includes('cinema') || t.includes('festa') || t.includes('show')) cat = 'Lazer';
-        else if (t.includes('salao') || t.includes('unha') || t.includes('cabelo') || t.includes('salão') || t.includes('beleza')) cat = 'Beleza';
+        else if (t.includes('salao') || t.includes('unha') || t.includes('cabelo') || t.includes('beleza')) cat = 'Beleza';
         else if (t.includes('curso') || t.includes('livro') || t.includes('estudo') || t.includes('faculdade')) cat = 'Estudo';
 
         let descricaoLimpa = msg.replace(/[R$]*\d+([.,]\d+)?/, '').replace(/(reais|real|reais com|gastei|com|gasto)/gi, '').trim();
@@ -160,7 +197,7 @@ export default function App() {
         setMensagens(prev => [...prev, { 
           id: Date.now()+1, 
           remetente: 'app', 
-          texto: `Vou registrar isso para você agora!\nFeito, ${nome}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
+          texto: `Vou registrar isso para você agora!\nFeito, ${nome || 'Izabella'}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
         }]);
       }
     }, 400);
@@ -188,9 +225,9 @@ export default function App() {
               <div className="step-content">
                 <h2 className="subtitulo">Criar sua Conta</h2>
                 <div className="grupo-inputs">
-                  <input type="text" placeholder="Seu Nome" value={nome} onChange={(e) => setNome(e.target.value)} className="input-custom" />
-                  <input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom" />
-                  <input type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} className="input-custom" />
+                  <input type="text" placeholder="Seu Nome" value={nome} onChange={(e) => setNome(e.target.value)} className="input-custom-dark" />
+                  <input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom-dark" />
+                  <input type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} className="input-custom-dark" />
                 </div>
                 <button onClick={criarContaFirebase} className="btn-laranja m-top">Cadastrar de Verdade</button>
               </div>
@@ -199,8 +236,8 @@ export default function App() {
               <div className="step-content">
                 <h2 className="subtitulo">Entrar no Otis</h2>
                 <div className="grupo-inputs">
-                  <input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom" />
-                  <input type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} className="input-custom" />
+                  <input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom-dark" />
+                  <input type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} className="input-custom-dark" />
                 </div>
                 <button onClick={logarFirebase} className="btn-laranja m-top">Fazer Login</button>
               </div>
@@ -214,44 +251,73 @@ export default function App() {
             {abaAtiva === 'inicio' && (
               <div className="page">
                 <div className="top-header">
-                  <span className="user-greet">Olá, {nome} 👋</span>
-                  <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
+                  <span className="user-greet">Olá, {nome || 'Usuário'} 👋</span>
+                  <span style={{ fontSize: '20px' }}>🦊</span>
                 </div>
 
-                <div className="card-sobrelante">
-                  <span className="label">VALOR SOBRELANTE LIVRE</span>
-                  <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
-                  <p className="sub">O que sobra real após todas as deduções de gastos.</p>
-                </div>
-
-                <div className="row-cards">
-                  <div className="mini-card" onClick={() => setEditandoGanhos(true)}>
-                    <span className="mini-label">Ganhos do Mês ✏️</span>
-                    {editandoGanhos ? (
-                      <input type="number" className="edit-input" defaultValue={ganhos} autoFocus onBlur={(e) => { if(e.target.value) setGanhos(parseFloat(e.target.value)); setEditandoGanhos(false); }} />
-                    ) : (
-                      <span className="mini-val text-verde">R$ {ganhos.toLocaleString('pt-BR')}</span>
+                <div className="dashboard-bars-container">
+                  <div className="dash-bar-item" onClick={() => setEditandoGanhos(true)}>
+                    <div className="dash-bar-info">
+                      <span className="dash-bar-label">Ganhos do Mês ✏️</span>
+                      <span className="dash-bar-value text-verde">R$ {ganhos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="dash-bar-bg">
+                      <div className="dash-bar-fill fill-verde" style={{ width: ganhos > 0 ? '100%' : '0%' }}></div>
+                    </div>
+                    {editandoGanhos && (
+                      <input type="number" className="edit-input-dash" defaultValue={ganhos} autoFocus onBlur={(e) => { setGanhos(parseFloat(e.target.value) || 0); setEditandoGanhos(false); }} />
                     )}
                   </div>
-                  <div className="mini-card">
-                    <span className="mini-label">Comprometido Total</span>
-                    <span className="mini-val text-laranja">R$ {comprometidoTotal.toLocaleString('pt-BR')}</span>
-                    <p style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>Fixas + Chat + Assinaturas + Parcelas</p>
+
+                  <div className="dash-bar-item">
+                    <div className="dash-bar-info">
+                      <span className="dash-bar-label">Valor que Sobra Livre</span>
+                      <span className="dash-bar-value" style={{ color: valorSobrelante < 0 ? '#ff4d4d' : '#ffffff' }}>
+                        R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="dash-bar-bg">
+                      <div className="dash-bar-fill fill-laranja" style={{ width: `${Math.max(0, Math.min(percSobra, 100))}%` }}></div>
+                    </div>
                   </div>
                 </div>
 
+                {/* NOVO DASHBOARD: DETALHAMENTO COMPLETO DE CONTA POR CONTA */}
                 <div className="section">
-                  <h3 className="section-title">Status das Contas Fixas</h3>
-                  {despesasFixas.map(f => (
-                    <div key={f.id} className="item-row">
-                      <div className="dot" style={{ background: f.pago ? '#33ff99' : '#ff4d4d' }}></div>
-                      <div className="info" onClick={() => setDespesasFixas(despesasFixas.map(i => i.id === f.id ? {...i, pago: !i.pago} : i))}>
-                        <p className="name">{f.descricao}</p>
-                        <p className="date">Vence dia {f.vencimento} • {f.pago ? 'Pago' : 'Pendente'}</p>
+                  <div className="comprometido-header">
+                    <span className="section-title">Comprometido Detalhado</span>
+                    <span className="comprometido-total-num">R$ {comprometidoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  
+                  <div className="comprometido-individual-list">
+                    {despesasFixas.map(f => (
+                      <div key={f.id} className="comp-indiv-card">
+                        <span>📋 {f.descricao} (Fixa)</span>
+                        <strong>R$ {f.valor.toFixed(2)}</strong>
                       </div>
-                      <span className="val">R$ {f.valor.toFixed(2)}</span>
-                    </div>
-                  ))}
+                    ))}
+                    {assinaturas.map(a => (
+                      <div key={a.id} className="comp-indiv-card">
+                        <span>📺 {a.nome} (Assinatura)</span>
+                        <strong>R$ {a.valor.toFixed(2)}</strong>
+                      </div>
+                    ))}
+                    {parcelamentos.map(p => (
+                      <div key={p.id} className="comp-indiv-card">
+                        <span>💳 {p.nome} ({p.parcelaAtual}/{p.parcelaTotal})</span>
+                        <strong>R$ {p.valor.toFixed(2)}</strong>
+                      </div>
+                    ))}
+                    {despesasVariaveis.map(g => (
+                      <div key={g.id} className="comp-indiv-card">
+                        <span>💬 {g.descricao} (Chat)</span>
+                        <strong>R$ {g.valor.toFixed(2)}</strong>
+                      </div>
+                    ))}
+                    {comprometidoTotal === 0 && (
+                      <p style={{ color: '#444', fontSize: '13px', textAlign: 'center', padding: '10px' }}>Nenhum valor comprometido lançado.</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -259,10 +325,10 @@ export default function App() {
             {abaAtiva === 'fixas' && (
               <div className="page">
                 <h2 className="section-title">Gerenciar Contas Fixas</h2>
-                <div className="form-box">
+                <div className="form-item-row-box">
                   <input type="text" placeholder="Nome da Conta" value={formFixa.descricao} onChange={e => setFormFixa({...formFixa, descricao: e.target.value})} className="input-custom-dark" />
                   <input type="number" placeholder="Valor (R$)" value={formFixa.valor} onChange={e => setFormFixa({...formFixa, valor: e.target.value})} className="input-custom-dark" />
-                  <button className="btn-laranja" onClick={() => {
+                  <button className="btn-laranja-fluid" onClick={() => {
                     if(!formFixa.descricao || !formFixa.valor) return;
                     if(editandoFixaId) {
                       setDespesasFixas(despesasFixas.map(f => f.id === editandoFixaId ? {...f, descricao: formFixa.descricao, valor: parseFloat(formFixa.valor)} : f));
@@ -271,18 +337,19 @@ export default function App() {
                       setDespesasFixas([...despesasFixas, { id: Date.now(), descricao: formFixa.descricao, valor: parseFloat(formFixa.valor), vencimento: 10, pago: false }]);
                     }
                     setFormFixa({descricao: '', valor: '', vencimento: '10'});
-                  }}>{editandoFixaId ? 'Salvar Alteração' : 'Adicionar Conta'}</button>
+                  }}>{editandoFixaId ? 'Salvar Alteração' : 'Adicionar Conta Fixa'}</button>
                 </div>
                 
-                <div className="section">
+                <div className="section" style={{ marginTop: '16px' }}>
                   {despesasFixas.map(f => (
                     <div key={f.id} className="item-row">
-                      <div className="info">
+                      <div className="info" onClick={() => setDespesasFixas(despesasFixas.map(i => i.id === f.id ? {...i, pago: !i.pago} : i))}>
                         <p className="name">{f.descricao}</p>
-                        <p className="date">R$ {f.valor.toFixed(2)}</p>
+                        <p className="date">Vence dia {f.vencimento} • {f.pago ? '✅ Pago' : '⏳ Pendente'}</p>
                       </div>
-                      <div className="actions">
-                        <button onClick={() => { setEditandoFixaId(f.id); setFormFixa({descricao: f.descricao, valor: f.valor.toString()}); }} style={{ background: 'none', border: 'none', marginRight: '12px' }}>✏️</button>
+                      <div className="actions" style={{ display: 'flex', gap: '12px' }}>
+                        <span className="val" style={{ marginRight: '4px' }}>R$ {f.valor.toFixed(2)}</span>
+                        <button onClick={() => { setEditandoFixaId(f.id); setFormFixa({descricao: f.descricao, valor: f.valor.toString(), vencimento: '10'}); }} style={{ background: 'none', border: 'none' }}>✏️</button>
                         <button onClick={() => setDespesasFixas(despesasFixas.filter(i => i.id !== f.id))} style={{ background: 'none', border: 'none' }}>🗑️</button>
                       </div>
                     </div>
@@ -296,7 +363,7 @@ export default function App() {
                 <div className="sub-nav-vision">
                   <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parcelamentos</button>
                   <button className={subAbaVision === 'assinaturas' ? 'active' : ''} onClick={() => setSubAbaVision('assinaturas')}>📺 Assinaturas</button>
-                  <button className={subAbaVision === 'categories' || subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Categorias</button>
+                  <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Categorias</button>
                 </div>
 
                 {subAbaVision === 'categorias' && (
@@ -327,7 +394,7 @@ export default function App() {
                             <div className="vision-info">
                               <span>{cat.ícone} {cat.nome}</span>
                               <span>R$ {totalCat.toFixed(2)} ({perc.toFixed(0)}%)</span>
-                        </div>
+                            </div>
                             <div className="bar-bg">
                               <div className="bar-fill" style={{ width: `${perc || 0}%`, background: cat.cor }}></div>
                             </div>
@@ -340,14 +407,14 @@ export default function App() {
 
                 {subAbaVision === 'assinaturas' && (
                   <div className="section">
-                    <div className="form-box">
+                    <div className="form-item-row-box">
                       <input type="text" placeholder="Nome da Assinatura" value={formAssinatura.nome} onChange={e => setFormAssinatura({...formAssinatura, nome: e.target.value})} className="input-custom-dark" />
                       <input type="number" placeholder="Valor Mensal" value={formAssinatura.valor} onChange={e => setFormAssinatura({...formAssinatura, valor: e.target.value})} className="input-custom-dark" />
-                      <button className="btn-laranja" onClick={() => {
+                      <button className="btn-laranja-fluid" onClick={() => {
                         if(!formAssinatura.nome || !formAssinatura.valor) return;
                         if(editandoAssinaturaId) {
                           setAssinaturas(assinaturas.map(a => a.id === editandoAssinaturaId ? {...a, nome: formAssinatura.nome, valor: parseFloat(formAssinatura.valor)} : a));
-                          setEditandoAssinaturaId(null);
+                          setEditandoAssuraId(null);
                         } else {
                           setAssinaturas([...assinaturas, { id: Date.now(), nome: formAssinatura.nome, valor: parseFloat(formAssinatura.valor) }]);
                         }
@@ -355,13 +422,13 @@ export default function App() {
                       }}>{editandoAssinaturaId ? 'Salvar Alteração' : 'Adicionar Assinatura'}</button>
                     </div>
 
-                    <h3 className="section-title" style={{ marginTop: '16px' }}>Suas Assinaturas</h3>
+                    <h3 className="section-title" style={{ marginTop: '20px' }}>Suas Assinaturas</h3>
                     {assinaturas.map(a => (
                       <div key={a.id} className="item-row">
                         <span className="name">📺 {a.nome}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span className="val">R$ {a.valor.toFixed(2)}</span>
-                          <button onClick={() => { setEditandoAssinaturaId(a.id); setFormAssinatura({ nome: a.nome, valor: a.valor.toString() }); }} style={{ background: 'none', border: 'none' }}>✏️</button>
+                          <button onClick={() => { setEditandoAssuraId(a.id); setFormAssinatura({ nome: a.nome, valor: a.valor.toString() }); }} style={{ background: 'none', border: 'none' }}>✏️</button>
                           <button onClick={() => setAssinaturas(assinaturas.filter(i => i.id !== a.id))} style={{ background: 'none', border: 'none' }}>🗑️</button>
                         </div>
                       </div>
@@ -371,14 +438,14 @@ export default function App() {
 
                 {subAbaVision === 'parcelamentos' && (
                   <div className="section">
-                    <div className="form-box">
+                    <div className="form-item-row-box">
                       <input type="text" placeholder="Nome da Compra" value={formParcela.nome} onChange={e => setFormParcela({...formParcela, nome: e.target.value})} className="input-custom-dark" />
                       <input type="number" placeholder="Valor da Parcela" value={formParcela.valor} onChange={e => setFormParcela({...formParcela, valor: e.target.value})} className="input-custom-dark" />
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                         <input type="number" placeholder="Parc. Atual" value={formParcela.atual} onChange={e => setFormParcela({...formParcela, atual: e.target.value})} className="input-custom-dark" />
                         <input type="number" placeholder="Total Parc." value={formParcela.total} onChange={e => setFormParcela({...formParcela, total: e.target.value})} className="input-custom-dark" />
                       </div>
-                      <button className="btn-laranja" onClick={() => {
+                      <button className="btn-laranja-fluid" onClick={() => {
                         if(!formParcela.nome || !formParcela.valor) return;
                         if(editandoParcelaId) {
                           setParcelamentos(parcelamentos.map(p => p.id === editandoParcelaId ? {...p, nome: formParcela.nome, valor: parseFloat(formParcela.valor), parcelaAtual: parseInt(formParcela.atual), parcelaTotal: parseInt(formParcela.total)} : p));
@@ -390,7 +457,7 @@ export default function App() {
                       }}>{editandoParcelaId ? 'Salvar Alteração' : 'Adicionar Parcelamento'}</button>
                     </div>
 
-                    <h3 className="section-title" style={{ marginTop: '16px' }}>Seus Parcelamentos</h3>
+                    <h3 className="section-title" style={{ marginTop: '20px' }}>Seus Parcelamentos</h3>
                     {parcelamentos.map(p => (
                       <div key={p.id} className="item-row">
                         <div className="info">
@@ -428,6 +495,33 @@ export default function App() {
               </div>
             )}
 
+            {/* NOVA ABA: MENU DE PERFIL COMPLETO DA PESSOA */}
+            {abaAtiva === 'perfil' && (
+              <div className="page">
+                <h2 className="section-title">Meu Perfil</h2>
+                <div className="form-item-row-box text-center">
+                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>🦊</div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>{nome || 'Usuário'}</h3>
+                  <p style={{ fontSize: '13px', color: '#666680', marginTop: '2px' }}>{userEmail}</p>
+                </div>
+
+                <div className="form-item-row-box">
+                  <h4 className="section-title" style={{ fontSize: '13px' }}>Alterar Nome de Exibição</h4>
+                  <input type="text" placeholder="Novo Nome" value={nome} onChange={(e) => setNome(e.target.value)} className="input-custom-dark" />
+                </div>
+
+                <form onSubmit={alterarSenhaReal} className="form-item-row-box">
+                  <h4 className="section-title" style={{ fontSize: '13px' }}>Segurança (Alterar Senha)</h4>
+                  <input type="password" placeholder="Nova Senha (mín. 6 dígitos)" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} className="input-custom-dark" />
+                  <button type="submit" className="btn-laranja-fluid">Atualizar Senha</button>
+                </form>
+
+                <button className="btn-laranja-fluid" style={{ backgroundColor: '#ff4d4d' }} onClick={() => signOut(auth)}>
+                  Fazer Logout / Sair da Conta 🚪
+                </button>
+              </div>
+            )}
+
           </div>
 
           <nav className="nav-floating">
@@ -435,6 +529,7 @@ export default function App() {
             <button className={abaAtiva === 'fixas' ? 'active' : ''} onClick={() => setAbaAtiva('fixas')}>📋</button>
             <button className={abaAtiva === 'visao' ? 'active' : ''} onClick={() => setAbaAtiva('visao')}>📊</button>
             <button className={abaAtiva === 'chat' ? 'active' : ''} onClick={() => setAbaAtiva('chat')}>💬</button>
+            <button className={abaAtiva === 'perfil' ? 'active' : ''} onClick={() => setAbaAtiva('perfil')}>👤</button>
           </nav>
         </div>
       )}
