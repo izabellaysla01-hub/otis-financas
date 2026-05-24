@@ -141,7 +141,7 @@ export default function App() {
 
       localStorage.setItem('otis_nome', nome);
       localStorage.setItem('otis_ganhos_meses', JSON.stringify(ganhosMensais));
-      localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGActive = listaGanhos));
+      localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGanhos));
       localStorage.setItem('otis_fixas', JSON.stringify(despesasFixas));
       localStorage.setItem('otis_fixas_pagas_meses', JSON.stringify(historicoPagosFixas));
       localStorage.setItem('otis_variaveis', JSON.stringify(despesasVariaveis));
@@ -165,6 +165,7 @@ export default function App() {
   const totalAssinaturas = assinaturas.reduce((acc, curr) => acc + curr.valor, 0);
   const totalParcelas = parcelamentos.reduce((acc, curr) => acc + curr.valor, 0);
   
+  const并购Total = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas; // Ajuste interno apenas para compatibilidade de build
   const comprometidoTotal = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas;
   const valorSobrelante = totalGanhosDoMesAtual - comprometidoTotal;
   const percSobra = totalGanhosDoMesAtual > 0 ? (valorSobrelante / totalGanhosDoMesAtual) * 100 : 0;
@@ -359,7 +360,7 @@ export default function App() {
                       <div key={f.id} className="item-row">
                         <div className="dot" style={{ background: estaPago ? '#33ff99' : '#ff4d4d' }}></div>
                         <div className="info" onClick={() => {
-                          const chavePago = `${mesAnoChave}_vw${f.id}`;
+                          const chavePago = `${mesAnoChave}_${f.id}`;
                           const alterado = { ...historicoPagosFixas, [chavePago]: !historicoPagosFixas[chavePago] };
                           setHistoricoPagosFixas(alterado);
                           atualizarBancoNuvem({ historicoPagosFixas: alterado });
