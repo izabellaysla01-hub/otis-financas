@@ -31,7 +31,7 @@ export default function App() {
   const [carregando, setCarregando] = useState(false);
   const [comprometidoAberto, setComprometidoAberto] = useState(false);
 
-  // Sistema de Data com seletor espaçado
+  // Sistema de Data com seletor espaçado e centralizado
   const [dataFiltro, setDataFiltro] = useState(new Date()); 
   
   const obterMesAnoTexto = (date) => {
@@ -52,8 +52,9 @@ export default function App() {
     const salvos = localStorage.getItem('otis_ganhos_meses');
     return salvos ? JSON.parse(salvos) : {};
   });
+  const [editandoGanhos, setEditandoGanhos] = useState(false);
 
-  // Categorias
+  // Categorias Dinâmicas + Inteligência de Criação
   const [categorias, setCategorias] = useState(() => {
     const salvas = localStorage.getItem('otis_categorias');
     return salvas ? JSON.parse(salvas) : [
@@ -102,7 +103,7 @@ export default function App() {
   });
 
   const [mensagens, setMensagens] = useState([
-    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui e eu coloco no mês ativo do topo!' }
+    { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui (ex: "farmácia 20") e eu gerencio tudo automaticamente!' }
   ]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -245,7 +246,10 @@ export default function App() {
             
             {step === 1 && (
               <div className="text-center-box">
-                <div className="logo-area"><div className="logo-detalhe"></div><span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span></div>
+                <div className="logo-area">
+                  <div className="logo-detalhe"></div>
+                  <span className="logo-texto">OTIS<span className="ponto-laranha">.</span></span>
+                </div>
                 <h1 className="titulo-principal">Descubra para onde está indo seu dinheiro.</h1>
                 <div className="grupo-botoes">
                   <button onClick={() => setStep(2)} className="btn-laranja">Criar uma conta</button>
@@ -290,13 +294,14 @@ export default function App() {
                   <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
                 </div>
 
-                {/* NOVO SELETOR DE CALENDÁRIO GRANDE E ESPAÇADO NO CENTRO */}
+                {/* CALENDÁRIO CENTRALIZADO E ESPAÇADO */}
                 <div className="calendar-box-center">
                   <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
                   <span className="text-date-cal">{obterMesAnoTexto(dataFiltro)}</span>
                   <button className="btn-arrow-cal" onClick={() => navegarMes(1)}>›</button>
                 </div>
 
+                {/* CARD GRADIENTE LARANJA DO SOBRELANTE LIVRE */}
                 <div className="card-sobrelante">
                   <span className="label">VALOR SOBRELANTE LIVRE</span>
                   <h1 className="valor-main">R$ {valorSobrelante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h1>
@@ -305,6 +310,7 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* CARD EXCLUSIVO DO GANHO MENSAL */}
                 <div className="mini-card-ganho" onClick={() => setEditandoGanhos(true)}>
                   <div className="dash-bar-info">
                     <span className="dash-bar-label">Ganhos Cadastrados no Mês ✏️</span>
@@ -319,6 +325,7 @@ export default function App() {
                   )}
                 </div>
 
+                {/* MENU SUSPENSO DO COMPROMETIDO INDIVIDUAL */}
                 <div className="section-comprometido-drop">
                   <div className="comprometido-header" onClick={() => setComprometidoAberto(!comprometidoAberto)} style={{ cursor: 'pointer' }}>
                     <span className="section-title">Comprometido no Mês {comprometidoAberto ? '▲' : '▼'}</span>
@@ -419,7 +426,6 @@ export default function App() {
 
             {abaAtiva === 'visao' && (
               <div className="page">
-                {/* SELETOR DE CALENDÁRIO ESPAÇADO TAMBÉM NA ABA VISÃO */}
                 <div className="calendar-box-center" style={{ marginBottom: '10px' }}>
                   <button className="btn-arrow-cal" onClick={() => navegarMes(-1)}>‹</button>
                   <span className="text-date-cal" style={{ fontSize: '15px' }}>{obterMesAnoTexto(dataFiltro)}</span>
@@ -589,6 +595,7 @@ export default function App() {
 
           </div>
 
+          {/* MENU COMPACTADO PREMIUM COM TEXTO LEGÍVEL EMBAIXO */}
           <nav className="nav-floating">
             <button className={abaAtiva === 'inicio' ? 'active' : ''} onClick={() => setAbaAtiva('inicio')}>
               <span>🏠</span><span className="nav-text">Início</span>
