@@ -8,6 +8,7 @@ import {
   onAuthStateChanged,
   updatePassword
 } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import './style.css';
 
 const firebaseConfig = {
@@ -21,10 +22,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [uid, setUid] = useState(null);
   const [step, setStep] = useState(1);
   const [abaAtiva, setAbaAtiva] = useState('inicio');
   const [subAbaVision, setSubAbaVision] = useState('categorias');
@@ -44,64 +47,43 @@ export default function App() {
   // Perfil e Login
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || '');
+  const [nome, setNome] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
 
   // Lista de Ganhos por Fontes Separadas
-  const [listaGanhos, setListaGanhos] = useState(() => {
-    const salvos = localStorage.getItem('otis_lista_ganhos');
-    return salvos ? JSON.parse(salvos) : [];
-  });
+  const [listaGanhos, setListaGanhos] = useState([]);
   const [formGanho, setFormGanho] = useState({ descricao: '', valor: '' });
   const [editandoGanhoId, setEditandoGanhoId] = useState(null);
 
   // Categorias Dinâmicas
-  const [categorias, setCategorias] = useState(() => {
-    const salvas = localStorage.getItem('otis_categorias');
-    return salvas ? JSON.parse(salvas) : [
-      { nome: 'Saúde', ícone: '🏥', cor: '#FF4D4D' },
-      { nome: 'Lazer', ícone: '🎡', cor: '#FFD700' },
-      { nome: 'Mercado', ícone: '🛒', cor: '#4CAF50' },
-      { nome: 'Transporte', ícone: '🚗', cor: '#2196F3' },
-      { nome: 'Beleza', ícone: '💅', cor: '#E91E63' },
-      { nome: 'Estudo', ícone: '📚', cor: '#9C27B0' },
-      { nome: 'Outros', ícone: '📦', cor: '#888888' }
-    ];
-  });
+  const [categorias, setCategorias] = useState([
+    { nome: 'Saúde', ícone: '🏥', cor: '#FF4D4D' },
+    { nome: 'Lazer', ícone: '🎡', cor: '#FFD700' },
+    { nome: 'Mercado', ícone: '🛒', cor: '#4CAF50' },
+    { nome: 'Transporte', ícone: '🚗', cor: '#2196F3' },
+    { nome: 'Beleza', ícone: '💅', cor: '#E91E63' },
+    { nome: 'Estudo', ícone: '📚', cor: '#9C27B0' },
+    { nome: 'Outros', ícone: '📦', cor: '#888888' }
+  ]);
   const [novaCatNome, setNovaCatNome] = useState('');
 
   // Contas Fixas Globais
-  const [despesasFixas, setDespesasFixas] = useState(() => {
-    const salvas = localStorage.getItem('otis_fixas');
-    return salvas ? JSON.parse(salvas) : [];
-  });
+  const [despesasFixas, setDespesasFixas] = useState([]);
   const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
 
-  const [historicoPagosFixas, setHistoricoPagosFixas] = useState(() => {
-    const salvos = localStorage.getItem('otis_fixas_pagas_meses');
-    return salvos ? JSON.parse(salvos) : {};
-  });
+  const [historicoPagosFixas, setHistoricoPagosFixas] = useState({});
 
-  // Assinaturas e Parcelamentos
-  const [assinaturas, setAssinaturas] = useState(() => {
-    const salvas = localStorage.getItem('otis_assinaturas');
-    return salvas ? JSON.parse(salvas) : [];
-  });
+  // Assinaturas e Parcelamentos Dinâmicos
+  const [assinaturas, setAssinaturas] = useState([]);
   const [formAssinatura, setFormAssinatura] = useState({ nome: '', valor: '' });
   const [editandoAssinaturaId, setEditandoAssuraId] = useState(null);
 
-  const [parcelamentos, setParcelamentos] = useState(() => {
-    const salvos = localStorage.getItem('otis_parcelamentos');
-    return salvos ? JSON.parse(salvos) : [];
-  });
+  const [parcelamentos, setParcelamentos] = useState([]);
   const [formParcela, setFormParcela] = useState({ nome: '', valor: '', atual: '', total: '' });
   const [editandoParcelaId, setEditandoParcelaId] = useState(null);
 
-  const [despesasVariaveis, setDespesasVariaveis] = useState(() => {
-    const salvas = localStorage.getItem('otis_variaveis');
-    return salvas ? JSON.parse(salvas) : [];
-  });
+  const [despesasVariaveis, setDespesasVariaveis] = useState([]);
 
   const [mensagens, setMensagens] = useState([
     { id: 1, remetente: 'app', texto: 'Oi! Sou o Otis. 🦊\nDigite seus gastos diários aqui (ex: "farmácia 20") e eu organizo tudo automaticamente!' }
@@ -109,30 +91,50 @@ export default function App() {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
+  // 1. CARREGAR DADOS DO FIRESTORE (NUVEM) QUANDO O USUÁRIO LOGAR
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUsuarioLogado(true);
+        setUid(user.uid);
         setUserEmail(user.email);
-        if (!nome) {
-          const nomeExt = user.email.split('@')[0];
-          setNome(nomeExt.charAt(0).toUpperCase() + nomeExt.slice(1));
+        
+        // Busca a pasta do usuário na nuvem
+        const docRef = doc(db, "usuarios", user.uid);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const d = docSnap.data();
+          setNome(d.nome || '');
+          setListaGanhos(d.listaGanhos || []);
+          setDespesasFixas(d.despesasFixas || []);
+          setHistoricoPagosFixas(d.historicoPagosFixas || {});
+          setAssinaturas(d.assinaturas || []);
+          setParcelamentos(d.parcelamentos || []);
+          setDespesasVariaveis(d.despesasVariaveis || []);
         }
-      } else { setUsuarioLogado(false); }
+      } else {
+        setUsuarioLogado(false);
+        setUid(null);
+      }
     });
     return () => unsubscribe();
-  }, [nome]);
+  }, []);
 
-  useEffect(() => { 
-    localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGanhos));
-    localStorage.setItem('otis_nome', nome);
-    localStorage.setItem('otis_fixas', JSON.stringify(despesasFixas));
-    localStorage.setItem('otis_fixas_pagas_meses', JSON.stringify(historicoPagosFixas));
-    localStorage.setItem('otis_variaveis', JSON.stringify(despesasVariaveis));
-    localStorage.setItem('otis_categorias', JSON.stringify(categorias));
-    localStorage.setItem('otis_assinaturas', JSON.stringify(assinaturas));
-    localStorage.setItem('otis_parcelamentos', JSON.stringify(parcelamentos));
-  }, [listaGanhos, nome, despesasFixas, historicoPagosFixas, despesasVariaveis, categorias, assinaturas, parcelamentos]);
+  // 2. SALVAR AUTOMATICAMENTE NA NUVEM SEMPRE QUE MUDAR ALGO NO APP
+  useEffect(() => {
+    if (uid) {
+      setDoc(doc(db, "usuarios", uid), {
+        nome,
+        listaGanhos,
+        despesasFixas,
+        historicoPagosFixas,
+        assinaturas,
+        parcelamentos,
+        despesasVariaveis
+      }, { merge: true });
+    }
+  }, [nome, listaGanhos, despesasFixas, historicoPagosFixas, assinaturas, parcelamentos, despesasVariaveis, uid]);
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
@@ -167,7 +169,6 @@ export default function App() {
     setCarregando(true);
     try {
       await createUserWithEmailAndPassword(auth, email, senha);
-      localStorage.setItem('otis_nome', nome);
       alert('Conta criada com sucesso!');
     } catch (error) { alert(error.message); } finally { setCarregando(false); }
   };
