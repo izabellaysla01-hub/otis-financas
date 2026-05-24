@@ -165,7 +165,6 @@ export default function App() {
   const totalAssinaturas = assinaturas.reduce((acc, curr) => acc + curr.valor, 0);
   const totalParcelas = parcelamentos.reduce((acc, curr) => acc + curr.valor, 0);
   
-  const并购Total = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas; // Ajuste interno apenas para compatibilidade de build
   const comprometidoTotal = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas;
   const valorSobrelante = totalGanhosDoMesAtual - comprometidoTotal;
   const percSobra = totalGanhosDoMesAtual > 0 ? (valorSobrelante / totalGanhosDoMesAtual) * 100 : 0;
@@ -293,7 +292,7 @@ export default function App() {
             {abaAtiva === 'inicio' && (
               <div className="page">
                 <div className="top-header">
-                  <span className="user-greet">Olá, {nome || 'Usuário'} 👋</span>
+                  <span className="user-greet">Olá, {nome || 'Izabella'} 👋</span>
                   <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
                 </div>
 
@@ -627,7 +626,7 @@ export default function App() {
                 <h2 className="section-title">Meu Perfil</h2>
                 <div className="form-item-row-box text-center-box">
                   <div style={{ fontSize: '48px', marginBottom: '8px' }}>🦊</div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>{nome || 'Usuário'}</h3>
+                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>{nome || 'Izabella'}</h3>
                   <p style={{ fontSize: '13px', color: '#666680', marginTop: '2px' }}>{userEmail}</p>
                 </div>
 
