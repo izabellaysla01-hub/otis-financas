@@ -141,7 +141,7 @@ export default function App() {
 
       localStorage.setItem('otis_nome', nome);
       localStorage.setItem('otis_ganhos_meses', JSON.stringify(ganhosMensais));
-      localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGanhos));
+      localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGActive = listaGanhos));
       localStorage.setItem('otis_fixas', JSON.stringify(despesasFixas));
       localStorage.setItem('otis_fixas_pagas_meses', JSON.stringify(historicoPagosFixas));
       localStorage.setItem('otis_variaveis', JSON.stringify(despesasVariaveis));
@@ -321,7 +321,7 @@ export default function App() {
                       const novosG = { ...ganhosMensais, [mesAnoChave]: val };
                       setGanhosMensais(novosG);
                       atualizarBancoNuvem({ ganhosMensais: novosG });
-                      setEditandoGActive = false; 
+                      setEditandoGanhos(false); 
                     }} />
                   )}
                   <p style={{ fontSize: '11px', color: '#444455', marginTop: '4px' }}>Edite no lápis ou detalhe as fontes na aba Visão 📊</p>
@@ -359,7 +359,7 @@ export default function App() {
                       <div key={f.id} className="item-row">
                         <div className="dot" style={{ background: estaPago ? '#33ff99' : '#ff4d4d' }}></div>
                         <div className="info" onClick={() => {
-                          const chavePago = `${mesAnoChave}_${f.id}`;
+                          const chavePago = `${mesAnoChave}_vw${f.id}`;
                           const alterado = { ...historicoPagosFixas, [chavePago]: !historicoPagosFixas[chavePago] };
                           setHistoricoPagosFixas(alterado);
                           atualizarBancoNuvem({ historicoPagosFixas: alterado });
