@@ -9,14 +9,14 @@ import {
 } from 'firebase/auth';
 import './style.css';
 
-// Suas credenciais do Firebase totalmente corrigidas e completas!
+// Suas credenciais oficiais e completas do Firebase!
 const firebaseConfig = {
-  apiKey: "AIzaSyAugQfX81kwXcFR3fhcCy6PLIiw",
+  apiKey: "AIzaSyAugQfX81kwXcFR3fhcCy6PLIiw8tqhT1w",
   authDomain: "otis-financas.firebaseapp.com",
   projectId: "otis-financas",
   storageBucket: "otis-financas.firebasestorage.app",
   messagingSenderId: "884031738300",
-  appId: "1:884031738300:web:74ae1d953ad4b7e5122dbe"
+  appId: "1:884031738300:web:74ae1d953ad4b7bcc21bb9"
 };
 
 // Inicializa o Firebase com segurança
@@ -143,7 +143,7 @@ export default function App() {
 
         const novoGasto = { id: Date.now(), descricao: msg.replace(/[R$]*\d+([.,]\d+)?/, '').trim() || 'Gasto', valor, categoria: cat, data: '24/05/2026' };
         setDespesasVariaveis(prev => [...prev, novoGasto]);
-        setMensagens(prev => [...prev, { id: Date.now()+1, remetente: 'app', texto: `Vou registrar isso para você agora!\nFeito!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` }]);
+        setMensagens(prev => [...prev, { id: Date.now()+1, remetente: 'app', texto: `Vou registrar isso para você agora!\nFeito!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}\n• Data: hoje, 24/05/2026` }]);
       }
     }, 500);
   };
