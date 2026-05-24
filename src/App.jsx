@@ -34,7 +34,6 @@ export default function App() {
   const [carregando, setCarregando] = useState(false);
   const [comprometidoAberto, setComprometidoAberto] = useState(false);
 
-  // Sistema de Data com seletor espaçado e centralizado
   const [dataFiltro, setDataFiltro] = useState(new Date()); 
   
   const obterMesAnoTexto = (date) => {
@@ -50,12 +49,11 @@ export default function App() {
   const [nome, setNome] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
 
-  // Lista de Ganhos por Fontes Separadas
+  // Estados com fallback para transição segura do localStorage
   const [listaGanhos, setListaGanhos] = useState([]);
   const [formGanho, setFormGanho] = useState({ descricao: '', valor: '' });
   const [editandoGanhoId, setEditandoGanhoId] = useState(null);
 
-  // Categorias Dinâmicas
   const [categorias, setCategorias] = useState([
     { nome: 'Saúde', ícone: '🏥', cor: '#FF4D4D' },
     { nome: 'Lazer', ícone: '🎡', cor: '#FFD700' },
@@ -66,23 +64,16 @@ export default function App() {
     { nome: 'Outros', ícone: '📦', cor: '#888888' }
   ]);
   const [novaCatNome, setNovaCatNome] = useState('');
-
-  // Contas Fixas Globais
   const [despesasFixas, setDespesasFixas] = useState([]);
   const [formFixa, setFormFixa] = useState({ descricao: '', valor: '', vencimento: '' });
   const [editandoFixaId, setEditandoFixaId] = useState(null);
-
   const [historicoPagosFixas, setHistoricoPagosFixas] = useState({});
-
-  // Assinaturas e Parcelamentos Dinâmicos
   const [assinaturas, setAssinaturas] = useState([]);
   const [formAssinatura, setFormAssinatura] = useState({ nome: '', valor: '' });
   const [editandoAssinaturaId, setEditandoAssuraId] = useState(null);
-
   const [parcelamentos, setParcelamentos] = useState([]);
   const [formParcela, setFormParcela] = useState({ nome: '', valor: '', atual: '', total: '' });
   const [editandoParcelaId, setEditandoParcelaId] = useState(null);
-
   const [despesasVariaveis, setDespesasVariaveis] = useState([]);
 
   const [mensagens, setMensagens] = useState([
@@ -91,7 +82,7 @@ export default function App() {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
-  // 1. CARREGAR DADOS DO FIRESTORE (NUVEM) QUANDO O USUÁRIO LOGAR
+  // PONTE DE TRANSIÇÃO INTELIGENTE: Puxa da nuvem, se não tiver, resgata do aparelho!
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -99,19 +90,40 @@ export default function App() {
         setUid(user.uid);
         setUserEmail(user.email);
         
-        // Busca a pasta do usuário na nuvem
         const docRef = doc(db, "usuarios", user.uid);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
+          // Se já tem dados na nuvem, usa os da nuvem
           const d = docSnap.data();
-          setNome(d.nome || '');
+          setNome(d.nome || localStorage.getItem('otis_nome') || '');
           setListaGanhos(d.listaGanhos || []);
           setDespesasFixas(d.despesasFixas || []);
           setHistoricoPagosFixas(d.historicoPagosFixas || {});
           setAssinaturas(d.assinaturas || []);
           setParcelamentos(d.parcelamentos || []);
           setDespesasVariaveis(d.despesasVariaveis || []);
+        } else {
+          // Se a nuvem está vazia, resgata o histórico antigo do localStorage do aparelho
+          setNome(localStorage.getItem('otis_nome') || '');
+          
+          const salvasGanhos = localStorage.getItem('otis_lista_ganhos');
+          if(salvasGanhos) setListaGanhos(JSON.parse(salvasGanhos));
+
+          const salvasFixas = localStorage.getItem('otis_fixas');
+          if(salvasFixas) setDespesasFixas(JSON.parse(salvasFixas));
+
+          const salvasPagosFixas = localStorage.getItem('otis_fixas_pagas_meses');
+          if(salvasPagosFixas) setHistoricoPagosFixas(JSON.parse(salvasPagosFixas));
+
+          const salvasVariaveis = localStorage.getItem('otis_variaveis');
+          if(salvasVariaveis) setDespesasVariaveis(JSON.parse(salvasVariaveis));
+
+          const salvasAssinaturas = localStorage.getItem('otis_assinaturas');
+          if(salvasAssinaturas) setAssinaturas(JSON.parse(salvasAssinaturas));
+
+          const salvosParcelamentos = localStorage.getItem('otis_parcelamentos');
+          if(salvosParcelamentos) setParcelamentos(JSON.parse(salvosParcelamentos));
         }
       } else {
         setUsuarioLogado(false);
@@ -121,7 +133,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. SALVAR AUTOMATICAMENTE NA NUVEM SEMPRE QUE MUDAR ALGO NO APP
+  // SALVA AUTOMATICAMENTE NA NUVEM FIRESTORE
   useEffect(() => {
     if (uid) {
       setDoc(doc(db, "usuarios", uid), {
@@ -138,10 +150,8 @@ export default function App() {
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
-  // Filtra e Soma os Ganhos cadastrados especificamente para o mês ativo
   const ganhosDoMesFiltrados = listaGanhos.filter(g => g.mesAno === mesAnoChave);
   const totalGanhosDoMesAtual = ganhosDoMesFiltrados.reduce((acc, curr) => acc + curr.valor, 0);
-
   const variaveisDoMes = despesasVariaveis.filter(d => d.mesAno === mesAnoChave);
 
   const totalFixas = despesasFixas.reduce((acc, curr) => acc + curr.valor, 0);
@@ -608,7 +618,7 @@ export default function App() {
                 <form onSubmit={alterarSenhaReal} className="form-item-row-box">
                   <h4 className="section-title" style={{ fontSize: '13px' }}>Segurança (Alterar Senha)</h4>
                   <input type="password" placeholder="Nova Senha" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} className="input-custom-dark" />
-                  <button type="submit" className="btn-laranja-fluid">Atualizar Senha</button>
+                  <input type="submit" className="btn-laranja-fluid" value="Atualizar Senha" />
                 </form>
 
                 <button className="btn-laranja-fluid" style={{ backgroundColor: '#ff4d4d', marginTop: '10px' }} onClick={() => signOut(auth)}>
