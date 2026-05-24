@@ -47,12 +47,13 @@ export default function App() {
   const [nome, setNome] = useState(() => localStorage.getItem('otis_nome') || '');
   const [novaSenha, setNovaSenha] = useState('');
 
-  // Financeiro Dinâmico
-  const [ganhosMensais, setGanhosMensais] = useState(() => {
-    const salvos = localStorage.getItem('otis_ganhos_meses');
-    return salvos ? JSON.parse(salvos) : {};
+  // NOVO: Lista de Ganhos por Fontes Separadas (Salário, Pix, etc)
+  const [listaGanhos, setListaGanhos] = useState(() => {
+    const salvos = localStorage.getItem('otis_lista_ganhos');
+    return salvos ? JSON.parse(salvos) : [];
   });
-  const [editandoGanhos, setEditandoGanhos] = useState(false);
+  const [formGanho, setFormGanho] = useState({ descricao: '', valor: '' });
+  const [editandoGanhoId, setEditandoGanhoId] = useState(null);
 
   // Categorias Dinâmicas
   const [categorias, setCategorias] = useState(() => {
@@ -123,7 +124,7 @@ export default function App() {
   }, [nome]);
 
   useEffect(() => { 
-    localStorage.setItem('otis_ganhos_meses', JSON.stringify(ganhosMensais));
+    localStorage.setItem('otis_lista_ganhos', JSON.stringify(listaGanhos));
     localStorage.setItem('otis_nome', nome);
     localStorage.setItem('otis_fixas', JSON.stringify(despesasFixas));
     localStorage.setItem('otis_fixas_pagas_meses', JSON.stringify(historicoPagosFixas));
@@ -131,11 +132,14 @@ export default function App() {
     localStorage.setItem('otis_categorias', JSON.stringify(categorias));
     localStorage.setItem('otis_assinaturas', JSON.stringify(assinaturas));
     localStorage.setItem('otis_parcelamentos', JSON.stringify(parcelamentos));
-  }, [ganhosMensais, nome, despesasFixas, historicoPagosFixas, despesasVariaveis, categorias, assinaturas, parcelamentos]);
+  }, [listaGanhos, nome, despesasFixas, historicoPagosFixas, despesasVariaveis, categorias, assinaturas, parcelamentos]);
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [mensagens]);
 
-  const ganhosDoMesAtual = ganhosMensais[mesAnoChave] || 0;
+  // Filtra e Soma os Ganhos cadastrados especificamente para o mês ativo
+  const ganhosDoMesFiltrados = listaGanhos.filter(g => g.mesAno === mesAnoChave);
+  const totalGanhosDoMesAtual = ganhosDoMesFiltrados.reduce((acc, curr) => acc + curr.valor, 0);
+
   const variaveisDoMes = despesasVariaveis.filter(d => d.mesAno === mesAnoChave);
 
   const totalFixas = despesasFixas.reduce((acc, curr) => acc + curr.valor, 0);
@@ -144,8 +148,8 @@ export default function App() {
   const totalParcelas = parcelamentos.reduce((acc, curr) => acc + curr.valor, 0);
   
   const comprometidoTotal = totalFixas + totalVariaveis + totalAssinaturas + totalParcelas;
-  const valorSobrelante = ganhosDoMesAtual - comprometidoTotal;
-  const percSobra = ganhosDoMesAtual > 0 ? (valorSobrelante / ganhosDoMesAtual) * 100 : 0;
+  const valorSobrelante = totalGanhosDoMesAtual - comprometidoTotal;
+  const percSobra = totalGanhosDoMesAtual > 0 ? (valorSobrelante / totalGanhosDoMesAtual) * 100 : 0;
 
   const totaisPorCategoria = categorias.reduce((acc, cat) => {
     acc[cat.nome] = variaveisDoMes.filter(d => d.categoria === cat.nome).reduce((sum, d) => sum + d.valor, 0);
@@ -286,9 +290,8 @@ export default function App() {
             
             {abaAtiva === 'inicio' && (
               <div className="page">
-                {/* CABEÇALHO ALINHADO SEM MÃOZINHA EMBAIXO DO NADA */}
                 <div className="top-header">
-                  <span className="user-greet">Olá, {nome || 'Usuário'}</span>
+                  <span className="user-greet">Olá, {nome || 'Usuário'} 👋</span>
                   <button className="btn-logout" onClick={() => signOut(auth)}>Sair 🚪</button>
                 </div>
 
@@ -306,19 +309,13 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="mini-card-ganho" onClick={() => setEditandoGanhos(true)}>
+                {/* NOVO DASHBOARD: SOMA TOTAL CONSOLIDADA E FORMATADA EM CAPS */}
+                <div className="mini-card-ganho">
                   <div className="dash-bar-info">
-                    {/* FONTE MAIOR AJUSTADA AQUI */}
-                    <span className="dash-bar-label font-destaque-ganho">Ganhos de {obterMesAnoTexto(dataFiltro)} ✏️</span>
-                    <span className="dash-bar-value text-verde">R$ {ganhosDoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="section-title-caps">GANHOS DO MÊS</span>
+                    <span className="dash-bar-value text-verde">R$ {totalGanhosDoMesAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
-                  {editandoGanhos && (
-                    <input type="number" className="edit-input-dash" defaultValue={ganhosDoMesAtual} autoFocus onBlur={(e) => { 
-                      const val = parseFloat(e.target.value) || 0;
-                      setGanhosMensais({ ...ganhosMensais, [mesAnoChave]: val });
-                      setEditandoGanhos(false); 
-                    }} />
-                  )}
+                  <p style={{ fontSize: '11px', color: '#444455', marginTop: '4px' }}>Cadastre e separe as fontes na aba Visão 📊</p>
                 </div>
 
                 <div className="section-comprometido-drop">
@@ -427,11 +424,45 @@ export default function App() {
                   <button className="btn-arrow-cal" onClick={() => navegarMes(1)}>›</button>
                 </div>
 
+                {/* VISÃO: QUATRO SUB-ABAS COM A NOVA DE GANHOS INTEGRADAS */}
                 <div className="sub-nav-vision">
-                  <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parcelamentos</button>
-                  <button className={subAbaVision === 'assinaturas' ? 'active' : ''} onClick={() => setSubAbaVision('assinaturas')}>📺 Assinaturas</button>
-                  <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Categorias</button>
+                  <button className={subAbaVision === 'ganhos' ? 'active' : ''} onClick={() => setSubAbaVision('ganhos')}>💰 Ganhos</button>
+                  <button className={subAbaVision === 'parcelamentos' ? 'active' : ''} onClick={() => setSubAbaVision('parcelamentos')}>📋 Parcelas</button>
+                  <button className={subAbaVision === 'assinaturas' ? 'active' : ''} onClick={() => setSubAbaVision('assinaturas')}>📺 Assin.</button>
+                  <button className={subAbaVision === 'categorias' ? 'active' : ''} onClick={() => setSubAbaVision('categorias')}>🏷️ Cat.</button>
                 </div>
+
+                {/* NOVA ABA: SEPARAÇÃO DOS GANHOS POR FONTE DINÂMICA */}
+                {subAbaVision === 'ganhos' && (
+                  <div className="section">
+                    <div className="form-item-row-box">
+                      <input type="text" placeholder="Origem do Ganho (Ex: Papelaria, Salário)" value={formGanho.descricao} onChange={e => setFormGanho({...formGanho, descricao: e.target.value})} className="input-custom-dark" />
+                      <input type="number" placeholder="Valor Recebido (R$)" value={formGanho.valor} onChange={e => setFormGanho({...formGanho, valor: e.target.value})} className="input-custom-dark" />
+                      <button className="btn-laranja-fluid" onClick={() => {
+                        if(!formGanho.descricao || !formGanho.valor) return alert('Preencha os campos!');
+                        if(editandoGanhoId) {
+                          setListaGanhos(listaGanhos.map(g => g.id === editandoGanhoId ? {...g, descricao: formGanho.descricao, valor: parseFloat(formGanho.valor)} : g));
+                          setEditandoGanhoId(null);
+                        } else {
+                          setListaGanhos([...listaGanhos, { id: Date.now(), descricao: formGanho.descricao, valor: parseFloat(formGanho.valor), mesAno: mesAnoChave }]);
+                        }
+                        setFormGanho({ descricao: '', valor: '' });
+                      }}>{editandoGanhoId ? 'Salvar Alteração' : 'Adicionar Entrada de Ganho'}</button>
+                    </div>
+
+                    <h3 className="section-title" style={{ marginTop: '20px' }}>Detalhamento de Entradas - {obterMesAnoTexto(dataFiltro)}</h3>
+                    {ganhosDoMesFiltrados.length === 0 ? <p style={{ color: '#444', fontSize: '13px' }}>Nenhum ganho lançado para este mês.</p> : ganhosDoMesFiltrados.map(g => (
+                      <div key={g.id} className="item-row">
+                        <span className="name">💰 {g.descricao}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span className="val text-verde">R$ {g.valor.toFixed(2)}</span>
+                          <button onClick={() => { setEditandoGanhoId(g.id); setFormGanho({ descricao: g.descricao, valor: g.valor.toString() }); }} style={{ background: 'none', border: 'none' }}>✏️</button>
+                          <button onClick={() => setListaGanhos(listaGanhos.filter(i => i.id !== g.id))} style={{ background: 'none', border: 'none' }}>🗑️</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {subAbaVision === 'categorias' && (
                   <>
@@ -454,7 +485,7 @@ export default function App() {
 
                     <div className="vision-list">
                       {categorias.map(cat => {
-                        const totalCat = totaisPorCategoria[cat.nome] || 0;
+                        const totalCat = totalCat = totaisPorCategoria[cat.nome] || 0;;
                         const perc = totalVariaveis > 0 ? (totalCat / totalVariaveis) * 100 : 0;
                         return (
                           <div key={cat.nome} className="vision-item">
