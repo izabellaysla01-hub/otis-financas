@@ -195,7 +195,7 @@ export default function App() {
     } catch(error) { alert(error.message); } finally { setCarregando(false); }
   };
 
-  const enviarMensagemChat = (e) => {
+    const enviarMensagemChat = (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
     const msg = inputText;
@@ -222,8 +222,16 @@ export default function App() {
 
         const novoGasto = { id: Date.now(), descricao: descricaoLimpa, valor, categoria: cat, mesAno: mesAnoChave, data: new Date().toLocaleDateString('pt-BR') };
         const novaListaVariaveis = [...despesasVariaveis, novoGasto];
+        
         setDespesasVariaveis(novaListaVariaveis);
         salvarAlteracoesNaNuvem({ despesasVariaveis: novaListaVariaveis });
+
+        // COLOCAMOS A RESPOSTA DA RAPOSINHA DE VOLTA AQUI:
+        setMensagens(prev => [...prev, { 
+          id: Date.now() + 1, 
+          remetente: 'app', 
+          texto: `Gasto salvo no histórico de ${obterMesAnoTexto(dataFiltro)}!\nFeito, ${nome || 'Izabella'}!\n• ${novoGasto.descricao} - R$ ${valor.toFixed(2)}\n• Categoria: ${cat}` 
+        }]);
       }
     }, 400);
   };
